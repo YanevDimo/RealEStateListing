@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Property - Real Estate Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-home me-2"></i>Real Estate Hub
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/agent/dashboard">
+                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                </a>
+                <a class="nav-link" href="/logout">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Add Property Section -->
+    <section class="py-5" style="margin-top: 100px;">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-10 col-lg-8">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body p-5">
+                            <div class="text-center mb-4">
+                                <h2 class="fw-bold text-primary">
+                                    <i class="fas fa-plus-circle me-2"></i>Add New Property
+                                </h2>
+                                <p class="text-muted">Create a new property listing for your clients</p>
+                            </div>
+
+                            <!-- Success/Error Messages -->
+                            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span th:text="${successMessage}"></span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+
+                            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <span th:text="${errorMessage}"></span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+
+                            <!-- Add Property Form -->
+                            <form th:action="@{/agent/properties/add}" th:object="${propertyDto}" method="post" enctype="multipart/form-data">
+                                
+                                <!-- Basic Information -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-info-circle me-2"></i>Basic Information
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-8">
+                                        <label for="title" class="form-label">
+                                            <i class="fas fa-home me-1"></i>Property Title *
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               th:field="*{title}"
+                                               id="title" 
+                                               placeholder="e.g., Beautiful 3-bedroom apartment in Sofia center"
+                                               required>
+                                        <div th:if="${#fields.hasErrors('title')}" class="text-danger">
+                                            <span th:errors="*{title}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="price" class="form-label">
+                                            <i class="fas fa-euro-sign me-1"></i>Price (€) *
+                                        </label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{price}"
+                                               id="price" 
+                                               step="0.01"
+                                               min="0"
+                                               placeholder="150000"
+                                               required>
+                                        <div th:if="${#fields.hasErrors('price')}" class="text-danger">
+                                            <span th:errors="*{price}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">
+                                        <i class="fas fa-file-alt me-1"></i>Description
+                                    </label>
+                                    <textarea class="form-control" 
+                                              th:field="*{description}"
+                                              id="description" 
+                                              rows="4" 
+                                              placeholder="Describe the property features, location, and unique selling points..."></textarea>
+                                    <div th:if="${#fields.hasErrors('description')}" class="text-danger">
+                                        <span th:errors="*{description}"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Property Details -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-cogs me-2"></i>Property Details
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label for="propertyTypeId" class="form-label">
+                                            <i class="fas fa-building me-1"></i>Property Type *
+                                        </label>
+                                        <select class="form-select" th:field="*{propertyTypeId}" id="propertyTypeId" required>
+                                            <option value="">Select Property Type</option>
+                                            <option th:each="type : ${propertyTypes}" 
+                                                    th:value="${type.id}" 
+                                                    th:text="${type.name}">Property Type</option>
+                                        </select>
+                                        <div th:if="${#fields.hasErrors('propertyTypeId')}" class="text-danger">
+                                            <span th:errors="*{propertyTypeId}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="cityId" class="form-label">
+                                            <i class="fas fa-map-marker-alt me-1"></i>City *
+                                        </label>
+                                        <select class="form-select" th:field="*{cityId}" id="cityId" required>
+                                            <option value="">Select City</option>
+                                            <option th:each="city : ${cities}" 
+                                                    th:value="${city.id}" 
+                                                    th:text="${city.name}">City</option>
+                                        </select>
+                                        <div th:if="${#fields.hasErrors('cityId')}" class="text-danger">
+                                            <span th:errors="*{cityId}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label for="address" class="form-label">
+                                            <i class="fas fa-map me-1"></i>Address
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               th:field="*{address}"
+                                               id="address" 
+                                               placeholder="Street address">
+                                        <div th:if="${#fields.hasErrors('address')}" class="text-danger">
+                                            <span th:errors="*{address}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Specifications -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-ruler-combined me-2"></i>Specifications
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-3">
+                                        <label for="beds" class="form-label">
+                                            <i class="fas fa-bed me-1"></i>Bedrooms
+                                        </label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{beds}"
+                                               id="beds" 
+                                               min="0"
+                                               placeholder="3">
+                                        <div th:if="${#fields.hasErrors('beds')}" class="text-danger">
+                                            <span th:errors="*{beds}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label for="baths" class="form-label">
+                                            <i class="fas fa-bath me-1"></i>Bathrooms
+                                        </label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{baths}"
+                                               id="baths" 
+                                               min="0"
+                                               placeholder="2">
+                                        <div th:if="${#fields.hasErrors('baths')}" class="text-danger">
+                                            <span th:errors="*{baths}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label for="areaSqm" class="form-label">
+                                            <i class="fas fa-expand-arrows-alt me-1"></i>Area (m²)
+                                        </label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{areaSqm}"
+                                               id="areaSqm" 
+                                               step="0.01"
+                                               min="0"
+                                               placeholder="120.50">
+                                        <div th:if="${#fields.hasErrors('areaSqm')}" class="text-danger">
+                                            <span th:errors="*{areaSqm}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label for="yearBuilt" class="form-label">
+                                            <i class="fas fa-calendar me-1"></i>Year Built
+                                        </label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{yearBuilt}"
+                                               id="yearBuilt" 
+                                               min="1800"
+                                               max="2030"
+                                               placeholder="2020">
+                                        <div th:if="${#fields.hasErrors('yearBuilt')}" class="text-danger">
+                                            <span th:errors="*{yearBuilt}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+
+                                <!-- Images -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-images me-2"></i>Property Images
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="images" class="form-label">
+                                        <i class="fas fa-camera me-1"></i>Upload Images
+                                    </label>
+                                    <input type="file" 
+                                           class="form-control" 
+                                           th:field="*{images}"
+                                           id="images" 
+                                           multiple 
+                                           accept="image/*">
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        You can upload multiple images. Supported formats: JPG, PNG, GIF, WebP. Max size: 10MB per image.
+                                    </div>
+                                    <div th:if="${#fields.hasErrors('images')}" class="text-danger">
+                                        <span th:errors="*{images}"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Features -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-star me-2"></i>Features
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               th:field="*{featured}"
+                                               id="featured">
+                                        <label class="form-check-label" for="featured">
+                                            <i class="fas fa-star me-1"></i>Featured Property
+                                        </label>
+                                        <div class="form-text">Featured properties appear prominently on the homepage</div>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Buttons -->
+                                <div class="d-flex gap-3">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-plus me-2"></i>Add Property
+                                    </button>
+                                    <a href="/agent/dashboard" class="btn btn-outline-secondary btn-lg">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5>Real Estate Hub</h5>
+                    <p>Your trusted partner in finding the perfect property in Bulgaria. We connect you with the best homes and expert agents.</p>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/" class="text-muted">Home</a></li>
+                        <li><a href="/properties" class="text-muted">Properties</a></li>
+                        <li><a href="/agents" class="text-muted">Agents</a></li>
+                        <li><a href="/about" class="text-muted">About Us</a></li>
+                        <li><a href="/contact" class="text-muted">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Agent Tools</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/agent/dashboard" class="text-muted">Dashboard</a></li>
+                        <li><a href="/agent/properties/add" class="text-muted">Add Property</a></li>
+                        <li><a href="/agent/profile/edit" class="text-muted">Edit Profile</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4">
+                    <h5>Contact Info</h5>
+                    <ul class="list-unstyled text-muted">
+                        <li><i class="fas fa-map-marker-alt me-2"></i> 123 Real Estate St, Sofia, Bulgaria</li>
+                        <li><i class="fas fa-phone me-2"></i> +359 888 123 456</li>
+                        <li><i class="fas fa-envelope me-2"></i> info@realestatehub.com</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4 border-secondary">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="text-muted mb-0">&copy; 2024 Real Estate Hub. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="text-muted mb-0">Designed by <a href="#" class="text-muted">AI Assistant</a></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

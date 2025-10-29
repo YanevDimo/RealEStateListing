@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Hub - Find Your Dream Home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <!-- Modern Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-home me-2"></i>Real Estate Hub
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/properties">Properties</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/agents">Agents</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/contact">Contact</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/register">
+                            <i class="fas fa-user-plus me-1"></i>Register
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Modern Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <div class="hero-content">
+                        <h1 class="hero-title">Find Your Dream Home in Bulgaria</h1>
+                        <p class="hero-subtitle">Discover the perfect property with our comprehensive listings, expert agents, and personalized service. Your dream home awaits.</p>
+                        
+                        <!-- Modern Search Form -->
+                        <div class="search-form">
+                            <form action="/properties" method="get">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="search" class="form-label fw-semibold">Search</label>
+                                        <input type="text" class="form-control" id="search" name="search" placeholder="Enter location, property type...">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="city" class="form-label fw-semibold">City</label>
+                                        <select class="form-select" id="city" name="city">
+                                            <option value="">All Cities</option>
+                                            <option th:each="city : ${cities}" th:value="${city}" th:text="${city}">City</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="type" class="form-label fw-semibold">Property Type</label>
+                                        <select class="form-select" id="type" name="type">
+                                            <option value="">All Types</option>
+                                            <option th:each="type : ${propertyTypes}" th:value="${type}" th:text="${type}">Type</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="maxPrice" class="form-label fw-semibold">Max Price (€)</label>
+                                        <select class="form-select" id="maxPrice" name="maxPrice">
+                                            <option value="">Any Price</option>
+                                            <option value="100000">€100,000</option>
+                                            <option value="200000">€200,000</option>
+                                            <option value="300000">€300,000</option>
+                                            <option value="500000">€500,000</option>
+                                            <option value="1000000">€1,000,000+</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn search-btn w-100">
+                                            <i class="fas fa-search me-2"></i>Search Properties
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="hero-image text-center">
+                        <img src="https://cdn.pixabay.com/photo/2018/02/13/11/09/home-3150500_1280.jpg" 
+                             alt="Beautiful Home" class="img-fluid rounded-3">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Properties Section -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Featured Properties</h2>
+            <p class="section-subtitle">Discover our handpicked selection of premium properties across Bulgaria</p>
+            
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6" th:each="property : ${featuredProperties}">
+                    <div class="card property-card h-100">
+                        <div class="position-relative">
+                            <img th:src="${property.getPrimaryImageUrl()}" class="card-img-top" alt="Property Image">
+                            <div class="featured-badge" th:if="${property.featured}">Featured</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="property-price" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€150,000</div>
+                            <h5 class="property-title" th:text="${property.title}">Modern Apartment in Sofia Center</h5>
+                            <div class="property-location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span th:text="${property.city}">Sofia</span>
+                            </div>
+                            <div class="property-features">
+                                <div class="property-feature">
+                                    <i class="fas fa-bed"></i>
+                                    <span th:text="${property.beds}">2</span> beds
+                                </div>
+                                <div class="property-feature">
+                                    <i class="fas fa-bath"></i>
+                                    <span th:text="${property.baths}">1</span> baths
+                                </div>
+                                <div class="property-feature">
+                                    <i class="fas fa-ruler-combined"></i>
+                                    <span th:text="${property.areaSqm}">85.5</span> m²
+                                </div>
+                            </div>
+                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary w-100">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-5">
+                <a href="/properties" class="btn btn-primary btn-lg">
+                    View All Properties
+                    <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="section" style="background-color: var(--gray-100);">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="stats-card">
+                        <div class="stats-number">500+</div>
+                        <div class="stats-label">Properties Listed</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stats-card">
+                        <div class="stats-number">50+</div>
+                        <div class="stats-label">Expert Agents</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stats-card">
+                        <div class="stats-number">1000+</div>
+                        <div class="stats-label">Happy Clients</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stats-card">
+                        <div class="stats-number">15+</div>
+                        <div class="stats-label">Cities Covered</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Agents Section -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">Meet Our Expert Agents</h2>
+            <p class="section-subtitle">Our experienced real estate professionals are here to help you find your perfect home</p>
+            
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="agent-card">
+                        <img src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg" 
+                             alt="Agent" class="agent-avatar">
+                        <h4 class="agent-name">Ivan Georgiev</h4>
+                        <p class="agent-title">Senior Real Estate Agent</p>
+                        <div class="agent-rating">
+                            <div class="rating-stars">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <span class="rating-text">4.8 (120 reviews)</span>
+                        </div>
+                        <p class="text-muted">10+ years experience in Sofia real estate market</p>
+                        <a href="/agents/detail?id=1" class="btn btn-outline-primary">View Profile</a>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="agent-card">
+                        <img src="https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg" 
+                             alt="Agent" class="agent-avatar">
+                        <h4 class="agent-name">Ivanina Peeva</h4>
+                        <p class="agent-title">Luxury Property Specialist</p>
+                        <div class="agent-rating">
+                            <div class="rating-stars">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <span class="rating-text">4.9 (95 reviews)</span>
+                        </div>
+                        <p class="text-muted">Specialized in luxury properties and commercial real estate</p>
+                        <a href="/agents/detail?id=2" class="btn btn-outline-primary">View Profile</a>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="agent-card">
+                        <img src="https://images.pexels.com/photos/846741/pexels-photo-846741.jpeg" 
+                             alt="Agent" class="agent-avatar">
+                        <h4 class="agent-name">Michael Ivanov</h4>
+                        <p class="agent-title">Residential Expert</p>
+                        <div class="agent-rating">
+                            <div class="rating-stars">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <span class="rating-text">4.7 (150 reviews)</span>
+                        </div>
+                        <p class="text-muted">Expert in residential properties and first-time buyers</p>
+                        <a href="/agents/detail?id=3" class="btn btn-outline-primary">View Profile</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-5">
+                <a href="/agents" class="btn btn-primary btn-lg">
+                    Meet All Agents
+                    <i class="fas fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5>Real Estate Hub</h5>
+                    <p>Your trusted partner in finding the perfect property in Bulgaria. We connect you with the best homes and expert agents.</p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="text-white"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/properties">Properties</a></li>
+                        <li><a href="/agents">Agents</a></li>
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Services</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">Buy Property</a></li>
+                        <li><a href="#">Sell Property</a></li>
+                        <li><a href="#">Rent Property</a></li>
+                        <li><a href="#">Property Valuation</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4">
+                    <h5>Contact Info</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-phone me-2"></i>+359 888 123 456</li>
+                        <li><i class="fas fa-envelope me-2"></i>info@realestatehub.bg</li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i>Sofia, Bulgaria</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted mb-0">&copy; 2024 Real Estate Hub. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-muted me-3">Privacy Policy</a>
+                    <a href="#" class="text-muted">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

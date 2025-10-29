@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Agents - Real Estate Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-home me-2"></i>Real Estate Hub
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/properties">Properties</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/agents">Agents</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/contact">Contact</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/agent/register">
+                            <i class="fas fa-user-tie me-1"></i>Register as Agent
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="py-5" style="margin-top: 100px;">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold">Our Expert Agents</h1>
+                    <p class="lead text-muted">Meet our professional real estate agents ready to help you find your dream home</p>
+                    
+                    <!-- Agent Statistics -->
+                    <div class="row g-4 mt-4">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="stats-card">
+                                <div class="stats-icon">
+                                    <i class="fas fa-users text-primary"></i>
+                                </div>
+                                <div class="stats-content">
+                                    <div class="stats-number" th:text="${totalAgents}">0</div>
+                                    <div class="stats-label">Total Agents</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <div class="stats-card">
+                                <div class="stats-icon">
+                                    <i class="fas fa-home text-success"></i>
+                                </div>
+                                <div class="stats-content">
+                                    <div class="stats-number" th:text="${agentsWithProperties}">0</div>
+                                    <div class="stats-label">Agents with Properties</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <div class="stats-card">
+                                <div class="stats-icon">
+                                    <i class="fas fa-calendar-alt text-info"></i>
+                                </div>
+                                <div class="stats-content">
+                                    <div class="stats-number" th:text="${averageExperience}">0.0</div>
+                                    <div class="stats-label">Avg. Experience (Years)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Agents with Properties -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row" th:if="${agents != null and !agents.empty}">
+                <div class="col-12" th:each="agent : ${agents}">
+                    <div class="card agent-profile-card mb-4 shadow-lg">
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Agent Information -->
+                                <div class="col-lg-4">
+                                    <div class="agent-info text-center">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" 
+                                 class="agent-avatar mb-3" alt="Agent Photo">
+                                        <h4 class="agent-name" th:text="${agent.getAgentName()}">Agent Name</h4>
+                                        <p class="agent-title text-primary" th:text="${agent.licenseNumber}">License: RE-2024-001</p>
+                                        
+                                        <div class="agent-stats mb-3">
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <div class="stat-item">
+                                                        <div class="stat-number text-primary" th:text="${agent.experienceYears}">0</div>
+                                                        <div class="stat-label">Years Exp.</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="stat-item">
+                                                        <div class="stat-number text-success" th:text="${agent.totalListings}">0</div>
+                                                        <div class="stat-label">Properties</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="agent-rating mb-3">
+                                            <div class="rating-stars">
+                                    <i class="fas fa-star text-warning"></i>
+                                    <i class="fas fa-star text-warning"></i>
+                                    <i class="fas fa-star text-warning"></i>
+                                    <i class="fas fa-star text-warning"></i>
+                                    <i class="fas fa-star text-warning"></i>
+                                            </div>
+                                            <span class="rating-text" th:text="${agent.rating}">4.8</span>
+                                </div>
+                                        
+                                        <div class="agent-contact mb-3">
+                                <p class="text-muted small">
+                                                <i class="fas fa-envelope me-1"></i>
+                                                <span th:text="${agent.getAgentEmail()}">agent@email.com</span>
+                                            </p>
+                                            <p class="text-muted small" th:if="${agent.getAgentPhone()}">
+                                                <i class="fas fa-phone me-1"></i>
+                                                <span th:text="${agent.getAgentPhone()}">+359 888 123 456</span>
+                                </p>
+                            </div>
+                            
+                                        <div class="agent-bio mb-3">
+                                            <p class="text-muted small" th:text="${agent.bio}">Experienced real estate agent with extensive knowledge of the local market.</p>
+                                        </div>
+                                        
+                                        <div class="agent-specializations mb-3" th:if="${agent.getSpecializationsAsString() != null and !agent.getSpecializationsAsString().isEmpty()}">
+                                            <div class="specialization-tags">
+                                                <span class="badge bg-primary me-1" th:each="spec : ${#strings.arraySplit(agent.getSpecializationsAsString(), ',')}" th:text="${#strings.trim(spec)}">Specialization</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Agent Actions -->
+                                        <div class="agent-actions">
+                                            <a th:href="@{/agents/detail(id=${agent.id})}" class="btn btn-outline-primary btn-sm me-2">
+                                                <i class="fas fa-eye me-1"></i>View Profile
+                                            </a>
+                                            <a th:href="@{/agent/properties/add}" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plus me-1"></i>Add Property
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Agent Properties -->
+                                <div class="col-lg-8">
+                                    <div class="agent-properties">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-home me-2"></i>Properties
+                                                <span class="badge bg-primary ms-2" th:text="${agent.properties != null ? agent.properties.size() : 0}">0</span>
+                                            </h5>
+                                            <a th:href="@{/agent/properties/add}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-plus me-1"></i>Add Property
+                                            </a>
+                                        </div>
+                                        
+                                        <div th:if="${agent.properties != null and !agent.properties.empty}" class="row g-3">
+                                            <div class="col-md-6 col-lg-4" th:each="property : ${agent.properties}">
+                                                <div class="card property-mini-card h-100">
+                                                    <div class="card-body">
+                                                        <div class="property-price text-primary fw-bold mb-2" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€150,000</div>
+                                                        <h6 class="property-title mb-2" th:text="${property.title}">Property Title</h6>
+                                                        <div class="property-location text-muted small mb-2">
+                                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                                            <span th:text="${property.city.name}">City</span>
+                                                        </div>
+                                                        <div class="property-features mb-2">
+                                                            <span class="badge bg-light text-dark me-1" th:if="${property.beds > 0}">
+                                                                <i class="fas fa-bed me-1"></i><span th:text="${property.beds}">2</span>
+                                                            </span>
+                                                            <span class="badge bg-light text-dark me-1" th:if="${property.baths > 0}">
+                                                                <i class="fas fa-bath me-1"></i><span th:text="${property.baths}">1</span>
+                                                            </span>
+                                                            <span class="badge bg-light text-dark me-1" th:if="${property.areaSqm}">
+                                                                <i class="fas fa-ruler-combined me-1"></i><span th:text="${property.areaSqm}">85</span>m²
+                                                            </span>
+                                                        </div>
+                                                        <div class="property-status mb-2">
+                                                            <span class="badge" 
+                                                                  th:classappend="${property.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
+                                                                  th:text="${property.status.name()}">ACTIVE</span>
+                                                            <span th:if="${property.featured}" class="badge bg-warning ms-1">
+                                                                <i class="fas fa-star me-1"></i>Featured
+                                                            </span>
+                                                        </div>
+                                                        <div class="property-actions">
+                                                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary btn-sm">
+                                                                <i class="fas fa-eye me-1"></i>View
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div th:if="${agent.properties == null or agent.properties.empty}" class="text-center py-4">
+                                            <i class="fas fa-home fa-3x text-muted mb-3"></i>
+                                            <h6 class="text-muted">No Properties Listed</h6>
+                                            <p class="text-muted small">This agent hasn't listed any properties yet.</p>
+                                            <a th:href="@{/agent/properties/add}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-plus me-1"></i>Add Your First Property
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row" th:if="${agents == null or agents.empty}">
+                <div class="col-12 text-center">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No agents available at the moment.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5>Real Estate Hub</h5>
+                    <p>Your trusted partner in finding the perfect property in Bulgaria. We connect you with the best homes and expert agents.</p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="text-white"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/properties">Properties</a></li>
+                        <li><a href="/agents">Agents</a></li>
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Services</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#">Buy Property</a></li>
+                        <li><a href="#">Sell Property</a></li>
+                        <li><a href="#">Rent Property</a></li>
+                        <li><a href="#">Property Valuation</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4">
+                    <h5>Contact Info</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-phone me-2"></i>+359 888 123 456</li>
+                        <li><i class="fas fa-envelope me-2"></i>info@realestatehub.bg</li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i>Sofia, Bulgaria</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted mb-0">&copy; 2024 Real Estate Hub. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-muted me-3">Privacy Policy</a>
+                    <a href="#" class="text-muted">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

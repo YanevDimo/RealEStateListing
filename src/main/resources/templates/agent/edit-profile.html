@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Real Estate Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-home me-2"></i>Real Estate Hub
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/agent/dashboard">
+                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                </a>
+                <a class="nav-link" href="/logout">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Edit Profile Section -->
+    <section class="py-5" style="margin-top: 100px;">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body p-5">
+                            <div class="text-center mb-4">
+                                <h2 class="fw-bold text-primary">
+                                    <i class="fas fa-user-edit me-2"></i>Edit Profile
+                                </h2>
+                                <p class="text-muted">Update your professional information</p>
+                            </div>
+
+                            <!-- Success/Error Messages -->
+                            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span th:text="${successMessage}"></span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+
+                            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <span th:text="${errorMessage}"></span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+
+                            <!-- Error Display -->
+                            <div th:if="${error}" class="alert alert-danger" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <span th:text="${error}"></span>
+                            </div>
+
+                            <!-- Edit Profile Form -->
+                            <form th:action="@{/agent/profile/edit}" th:object="${profileDto}" method="post">
+                                
+                                <!-- Personal Information -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-user me-2"></i>Personal Information
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label for="name" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Full Name *
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               th:field="*{name}"
+                                               id="name" 
+                                               placeholder="Enter your full name"
+                                               required>
+                                        <div th:if="${#fields.hasErrors('name')}" class="text-danger">
+                                            <span th:errors="*{name}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="email" class="form-label">
+                                            <i class="fas fa-envelope me-1"></i>Email Address *
+                                        </label>
+                                        <input type="email" 
+                                               class="form-control" 
+                                               th:field="*{email}"
+                                               id="email" 
+                                               placeholder="Enter your email"
+                                               readonly>
+                                        <div class="form-text">Email cannot be changed</div>
+                                        <div th:if="${#fields.hasErrors('email')}" class="text-danger">
+                                            <span th:errors="*{email}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">
+                                        <i class="fas fa-phone me-1"></i>Phone Number
+                                    </label>
+                                    <input type="tel" 
+                                           class="form-control" 
+                                           th:field="*{phone}"
+                                           id="phone" 
+                                           placeholder="Enter your phone number">
+                                    <div th:if="${#fields.hasErrors('phone')}" class="text-danger">
+                                        <span th:errors="*{phone}"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Professional Information -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3">
+                                            <i class="fas fa-briefcase me-2"></i>Professional Information
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="licenseNumber" class="form-label">
+                                        <i class="fas fa-certificate me-1"></i>License Number *
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           th:field="*{licenseNumber}"
+                                           id="licenseNumber" 
+                                           placeholder="Enter your real estate license number"
+                                           required>
+                                    <div th:if="${#fields.hasErrors('licenseNumber')}" class="text-danger">
+                                        <span th:errors="*{licenseNumber}"></span>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label for="experienceYears" class="form-label">
+                                            <i class="fas fa-calendar-alt me-1"></i>Years of Experience
+                                        </label>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               th:field="*{experienceYears}"
+                                               id="experienceYears" 
+                                               min="0" 
+                                               max="50"
+                                               placeholder="Enter years of experience">
+                                        <div th:if="${#fields.hasErrors('experienceYears')}" class="text-danger">
+                                            <span th:errors="*{experienceYears}"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="specializations" class="form-label">
+                                            <i class="fas fa-tags me-1"></i>Specializations
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               th:field="*{specializations}"
+                                               id="specializations" 
+                                               placeholder="e.g., Luxury Homes, Commercial Properties">
+                                        <div th:if="${#fields.hasErrors('specializations')}" class="text-danger">
+                                            <span th:errors="*{specializations}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="bio" class="form-label">
+                                        <i class="fas fa-file-alt me-1"></i>Professional Bio
+                                    </label>
+                                    <textarea class="form-control" 
+                                              th:field="*{bio}"
+                                              id="bio" 
+                                              rows="4" 
+                                              placeholder="Tell us about your experience and expertise in real estate..."></textarea>
+                                    <div th:if="${#fields.hasErrors('bio')}" class="text-danger">
+                                        <span th:errors="*{bio}"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Buttons -->
+                                <div class="d-flex gap-3">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i>Update Profile
+                                    </button>
+                                    <a href="/agent/dashboard" class="btn btn-outline-secondary btn-lg">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5>Real Estate Hub</h5>
+                    <p>Your trusted partner in finding the perfect property in Bulgaria. We connect you with the best homes and expert agents.</p>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/" class="text-muted">Home</a></li>
+                        <li><a href="/properties" class="text-muted">Properties</a></li>
+                        <li><a href="/agents" class="text-muted">Agents</a></li>
+                        <li><a href="/about" class="text-muted">About Us</a></li>
+                        <li><a href="/contact" class="text-muted">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2">
+                    <h5>Agent Tools</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="/agent/dashboard" class="text-muted">Dashboard</a></li>
+                        <li><a href="/agent/properties/add" class="text-muted">Add Property</a></li>
+                        <li><a href="/agent/profile/edit" class="text-muted">Edit Profile</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4">
+                    <h5>Contact Info</h5>
+                    <ul class="list-unstyled text-muted">
+                        <li><i class="fas fa-map-marker-alt me-2"></i> 123 Real Estate St, Sofia, Bulgaria</li>
+                        <li><i class="fas fa-phone me-2"></i> +359 888 123 456</li>
+                        <li><i class="fas fa-envelope me-2"></i> info@realestatehub.com</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="my-4 border-secondary">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="text-muted mb-0">&copy; 2024 Real Estate Hub. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="text-muted mb-0">Designed by <a href="#" class="text-muted">AI Assistant</a></p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
