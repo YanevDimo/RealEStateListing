@@ -6,7 +6,7 @@
     <title>Real Estate Hub - Find Your Dream Home</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="/css/styles.css" rel="stylesheet">
+    <link th:href="@{/styles.css}" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <!-- Modern Navigation -->
@@ -15,8 +15,8 @@
             <a class="navbar-brand" href="/">
                 <i class="fas fa-home me-2"></i>Real Estate Hub
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation" style="border: 1px solid rgba(255,255,255,0.3);">
+                <span class="navbar-toggler-icon" style="background-image: url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.85)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e&quot;);"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
@@ -105,9 +105,12 @@
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <div class="hero-image text-center">
-                        <img src="https://cdn.pixabay.com/photo/2018/02/13/11/09/home-3150500_1280.jpg" 
-                             alt="Beautiful Home" class="img-fluid rounded-3">
+                    <div class="hero-image text-center fade-in">
+                        <div class="hero-image-wrapper">
+                            <img src="https://cdn.pixabay.com/photo/2018/02/13/11/09/home-3150500_1280.jpg" 
+                                 alt="Beautiful Home" class="img-fluid rounded-3 shadow-lg hero-img">
+                            <div class="hero-overlay"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,40 +123,51 @@
             <h2 class="section-title">Featured Properties</h2>
             <p class="section-subtitle">Discover our handpicked selection of premium properties across Bulgaria</p>
             
-            <div class="row g-4">
-                <div class="col-lg-4 col-md-6" th:each="property : ${featuredProperties}">
-                    <div class="card property-card h-100">
-                        <div class="position-relative">
-                            <img th:src="${property.getPrimaryImageUrl()}" class="card-img-top" alt="Property Image">
-                            <div class="featured-badge" th:if="${property.featured}">Featured</div>
+            <div class="row g-4" th:if="${featuredProperties != null and !featuredProperties.isEmpty()}">
+                <div class="col-lg-4 col-md-6" th:each="property, iterStat : ${featuredProperties}">
+                    <div class="card property-card h-100 fade-in" th:style="'animation-delay: ' + ${iterStat.index * 0.1} + 's;'">
+                        <div class="property-image-wrapper position-relative">
+                            <img th:src="${property.getPrimaryImageUrl()}" class="card-img-top property-image" alt="Property Image">
+                            <div class="featured-badge" th:if="${property.featured}">
+                                <i class="fas fa-star me-1"></i>Featured
+                            </div>
+                            <div class="property-overlay">
+                                <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-light btn-sm">
+                                    <i class="fas fa-eye me-1"></i>Quick View
+                                </a>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="property-price" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€150,000</div>
                             <h5 class="property-title" th:text="${property.title}">Modern Apartment in Sofia Center</h5>
-                            <div class="property-location">
+                            <div class="property-location" th:if="${property.city != null}">
                                 <i class="fas fa-map-marker-alt"></i>
-                                <span th:text="${property.city}">Sofia</span>
+                                <span th:text="${property.city.name}">Sofia</span>
                             </div>
                             <div class="property-features">
-                                <div class="property-feature">
+                                <div class="property-feature" th:if="${property.beds != null}">
                                     <i class="fas fa-bed"></i>
                                     <span th:text="${property.beds}">2</span> beds
                                 </div>
-                                <div class="property-feature">
+                                <div class="property-feature" th:if="${property.baths != null}">
                                     <i class="fas fa-bath"></i>
                                     <span th:text="${property.baths}">1</span> baths
                                 </div>
-                                <div class="property-feature">
+                                <div class="property-feature" th:if="${property.areaSqm != null}">
                                     <i class="fas fa-ruler-combined"></i>
-                                    <span th:text="${property.areaSqm}">85.5</span> m²
+                                    <span th:text="${#numbers.formatDecimal(property.areaSqm, 0, 0)}">85.5</span> m²
                                 </div>
                             </div>
-                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary w-100">
-                                View Details
+                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary w-100 mt-3">
+                                <i class="fas fa-arrow-right me-2"></i>View Details
                             </a>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="text-center py-5" th:if="${featuredProperties == null or featuredProperties.isEmpty()}">
+                <i class="fas fa-home fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No featured properties available at the moment. Check back soon!</p>
             </div>
             
             <div class="text-center mt-5">
@@ -171,26 +185,46 @@
             <div class="row g-4">
                 <div class="col-lg-3 col-md-6">
                     <div class="stats-card">
-                        <div class="stats-number">500+</div>
-                        <div class="stats-label">Properties Listed</div>
+                        <div class="stats-icon-wrapper">
+                            <i class="fas fa-building stats-icon"></i>
+                        </div>
+                        <div class="stats-content">
+                            <div class="stats-number">500+</div>
+                            <div class="stats-label">Properties Listed</div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="stats-card">
-                        <div class="stats-number">50+</div>
-                        <div class="stats-label">Expert Agents</div>
+                        <div class="stats-icon-wrapper">
+                            <i class="fas fa-users stats-icon"></i>
+                        </div>
+                        <div class="stats-content">
+                            <div class="stats-number">50+</div>
+                            <div class="stats-label">Expert Agents</div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="stats-card">
-                        <div class="stats-number">1000+</div>
-                        <div class="stats-label">Happy Clients</div>
+                        <div class="stats-icon-wrapper">
+                            <i class="fas fa-smile stats-icon"></i>
+                        </div>
+                        <div class="stats-content">
+                            <div class="stats-number">1000+</div>
+                            <div class="stats-label">Happy Clients</div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="stats-card">
-                        <div class="stats-number">15+</div>
-                        <div class="stats-label">Cities Covered</div>
+                        <div class="stats-icon-wrapper">
+                            <i class="fas fa-map-marked-alt stats-icon"></i>
+                        </div>
+                        <div class="stats-content">
+                            <div class="stats-number">15+</div>
+                            <div class="stats-label">Cities Covered</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -282,11 +316,19 @@
                 <div class="col-lg-4">
                     <h5>Real Estate Hub</h5>
                     <p>Your trusted partner in finding the perfect property in Bulgaria. We connect you with the best homes and expert agents.</p>
-                    <div class="d-flex gap-3">
-                        <a href="#" class="text-white"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="text-white"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="text-white"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="text-white"><i class="fab fa-linkedin-in"></i></a>
+                    <div class="d-flex gap-3 social-links">
+                        <a href="#" class="social-link" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
                     </div>
                 </div>
                 <div class="col-lg-2">

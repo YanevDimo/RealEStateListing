@@ -6,7 +6,7 @@
     <title>Our Agents - Real Estate Hub</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="/css/styles.css" rel="stylesheet">
+    <link th:href="@{/styles.css}" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <!-- Navigation -->
@@ -15,8 +15,8 @@
             <a class="navbar-brand" href="/">
                 <i class="fas fa-home me-2"></i>Real Estate Hub
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation" style="border: 1px solid rgba(255,255,255,0.3);">
+                <span class="navbar-toggler-icon" style="background-image: url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.85)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e&quot;);"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
@@ -53,19 +53,19 @@
     </nav>
 
     <!-- Page Header -->
-    <section class="py-5" style="margin-top: 100px;">
+    <section class="py-5 section" style="margin-top: 100px; background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);">
         <div class="container">
             <div class="row">
-                <div class="col-12 text-center">
-                    <h1 class="display-4 fw-bold">Our Expert Agents</h1>
-                    <p class="lead text-muted">Meet our professional real estate agents ready to help you find your dream home</p>
+                <div class="col-12 text-center fade-in">
+                    <h1 class="display-4 fw-bold text-white mb-3">Our Expert Agents</h1>
+                    <p class="lead text-white" style="opacity: 0.9;">Meet our professional real estate agents ready to help you find your dream home</p>
                     
                     <!-- Agent Statistics -->
-                    <div class="row g-4 mt-4">
+                    <div class="row g-4 mt-5">
                         <div class="col-lg-4 col-md-6">
-                            <div class="stats-card">
-                                <div class="stats-icon">
-                                    <i class="fas fa-users text-primary"></i>
+                            <div class="stats-card fade-in" style="animation-delay: 0.1s;">
+                                <div class="stats-icon-wrapper">
+                                    <i class="fas fa-users stats-icon"></i>
                                 </div>
                                 <div class="stats-content">
                                     <div class="stats-number" th:text="${totalAgents}">0</div>
@@ -74,9 +74,9 @@
                             </div>
                         </div>
                         <div class="col-lg-4 col-md-6">
-                            <div class="stats-card">
-                                <div class="stats-icon">
-                                    <i class="fas fa-home text-success"></i>
+                            <div class="stats-card fade-in" style="animation-delay: 0.2s;">
+                                <div class="stats-icon-wrapper">
+                                    <i class="fas fa-home stats-icon"></i>
                                 </div>
                                 <div class="stats-content">
                                     <div class="stats-number" th:text="${agentsWithProperties}">0</div>
@@ -85,9 +85,9 @@
                             </div>
                         </div>
                         <div class="col-lg-4 col-md-6">
-                            <div class="stats-card">
-                                <div class="stats-icon">
-                                    <i class="fas fa-calendar-alt text-info"></i>
+                            <div class="stats-card fade-in" style="animation-delay: 0.3s;">
+                                <div class="stats-icon-wrapper">
+                                    <i class="fas fa-calendar-alt stats-icon"></i>
                                 </div>
                                 <div class="stats-content">
                                     <div class="stats-number" th:text="${averageExperience}">0.0</div>
@@ -102,20 +102,25 @@
     </section>
 
     <!-- Agents with Properties -->
-    <section class="py-5">
+    <section class="section">
         <div class="container">
-            <div class="row" th:if="${agents != null and !agents.empty}">
-                <div class="col-12" th:each="agent : ${agents}">
-                    <div class="card agent-profile-card mb-4 shadow-lg">
+            <div class="row g-4" th:if="${agents != null and !agents.empty}">
+                <div class="col-12" th:each="agent, iterStat : ${agents}">
+                    <div class="card agent-profile-card mb-4 shadow-lg fade-in" th:style="'animation-delay: ' + ${iterStat.index * 0.15} + 's;'">
                         <div class="card-body">
                             <div class="row">
                                 <!-- Agent Information -->
                                 <div class="col-lg-4">
                                     <div class="agent-info text-center">
-                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" 
-                                 class="agent-avatar mb-3" alt="Agent Photo">
+                                        <div class="agent-avatar-wrapper mb-3">
+                                            <img th:src="${agent.profilePictureUrl != null ? agent.profilePictureUrl : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop'}" 
+                                                 class="agent-avatar" alt="Agent Photo">
+                                            <div class="agent-avatar-overlay">
+                                                <i class="fas fa-camera"></i>
+                                            </div>
+                                        </div>
                                         <h4 class="agent-name" th:text="${agent.getAgentName()}">Agent Name</h4>
-                                        <p class="agent-title text-primary" th:text="${agent.licenseNumber}">License: RE-2024-001</p>
+                                        <p class="agent-title text-primary fw-semibold" th:text="'License: ' + ${agent.licenseNumber}">License: RE-2024-001</p>
                                         
                                         <div class="agent-stats mb-3">
                                             <div class="row g-2">
@@ -161,18 +166,17 @@
                                         </div>
                                         
                                         <div class="agent-specializations mb-3" th:if="${agent.getSpecializationsAsString() != null and !agent.getSpecializationsAsString().isEmpty()}">
-                                            <div class="specialization-tags">
-                                                <span class="badge bg-primary me-1" th:each="spec : ${#strings.arraySplit(agent.getSpecializationsAsString(), ',')}" th:text="${#strings.trim(spec)}">Specialization</span>
+                                            <div class="specialization-tags d-flex flex-wrap justify-content-center gap-2">
+                                                <span class="badge bg-primary px-3 py-2" 
+                                                      th:each="spec : ${#strings.arraySplit(agent.getSpecializationsAsString(), ',')}" 
+                                                      th:text="${#strings.trim(spec)}">Specialization</span>
                                             </div>
                                         </div>
                                         
                                         <!-- Agent Actions -->
-                                        <div class="agent-actions">
-                                            <a th:href="@{/agents/detail(id=${agent.id})}" class="btn btn-outline-primary btn-sm me-2">
-                                                <i class="fas fa-eye me-1"></i>View Profile
-                                            </a>
-                                            <a th:href="@{/agent/properties/add}" class="btn btn-primary btn-sm">
-                                                <i class="fas fa-plus me-1"></i>Add Property
+                                        <div class="agent-actions mt-3">
+                                            <a th:href="@{/agents/detail(id=${agent.id})}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                                                <i class="fas fa-eye me-2"></i>View Profile
                                             </a>
                                         </div>
                                     </div>
@@ -181,48 +185,55 @@
                                 <!-- Agent Properties -->
                                 <div class="col-lg-8">
                                     <div class="agent-properties">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 class="mb-0">
-                                                <i class="fas fa-home me-2"></i>Properties
-                                                <span class="badge bg-primary ms-2" th:text="${agent.properties != null ? agent.properties.size() : 0}">0</span>
+                                        <div class="d-flex justify-content-between align-items-center mb-4">
+                                            <h5 class="mb-0 fw-bold">
+                                                <i class="fas fa-home me-2 text-primary"></i>Properties
+                                                <span class="badge bg-primary ms-2 px-3 py-2" th:text="${agent.properties != null ? agent.properties.size() : 0}">0</span>
                                             </h5>
-                                            <a th:href="@{/agent/properties/add}" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-plus me-1"></i>Add Property
-                                            </a>
                                         </div>
                                         
                                         <div th:if="${agent.properties != null and !agent.properties.empty}" class="row g-3">
                                             <div class="col-md-6 col-lg-4" th:each="property : ${agent.properties}">
-                                                <div class="card property-mini-card h-100">
+                                                <div class="card property-mini-card h-100 transition-all">
+                                                    <div class="property-mini-image-wrapper position-relative">
+                                                        <img th:src="${property.getPrimaryImageUrl()}" 
+                                                             class="property-mini-image" 
+                                                             alt="Property Image">
+                                                        <div class="property-mini-overlay">
+                                                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-light btn-sm">
+                                                                <i class="fas fa-eye me-1"></i>Quick View
+                                                            </a>
+                                                        </div>
+                                                    </div>
                                                     <div class="card-body">
                                                         <div class="property-price text-primary fw-bold mb-2" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€150,000</div>
-                                                        <h6 class="property-title mb-2" th:text="${property.title}">Property Title</h6>
-                                                        <div class="property-location text-muted small mb-2">
+                                                        <h6 class="property-title mb-2 fw-semibold" th:text="${property.title}">Property Title</h6>
+                                                        <div class="property-location text-muted small mb-2" th:if="${property.city != null}">
                                                             <i class="fas fa-map-marker-alt me-1"></i>
                                                             <span th:text="${property.city.name}">City</span>
                                                         </div>
-                                                        <div class="property-features mb-2">
-                                                            <span class="badge bg-light text-dark me-1" th:if="${property.beds > 0}">
+                                                        <div class="property-features mb-3 d-flex flex-wrap gap-1">
+                                                            <span class="badge bg-light text-dark" th:if="${property.beds != null and property.beds > 0}">
                                                                 <i class="fas fa-bed me-1"></i><span th:text="${property.beds}">2</span>
                                                             </span>
-                                                            <span class="badge bg-light text-dark me-1" th:if="${property.baths > 0}">
+                                                            <span class="badge bg-light text-dark" th:if="${property.baths != null and property.baths > 0}">
                                                                 <i class="fas fa-bath me-1"></i><span th:text="${property.baths}">1</span>
                                                             </span>
-                                                            <span class="badge bg-light text-dark me-1" th:if="${property.areaSqm}">
-                                                                <i class="fas fa-ruler-combined me-1"></i><span th:text="${property.areaSqm}">85</span>m²
+                                                            <span class="badge bg-light text-dark" th:if="${property.areaSqm != null}">
+                                                                <i class="fas fa-ruler-combined me-1"></i><span th:text="${#numbers.formatDecimal(property.areaSqm, 0, 0)}">85</span>m²
                                                             </span>
                                                         </div>
-                                                        <div class="property-status mb-2">
+                                                        <div class="property-status mb-3 d-flex gap-1">
                                                             <span class="badge" 
                                                                   th:classappend="${property.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
                                                                   th:text="${property.status.name()}">ACTIVE</span>
-                                                            <span th:if="${property.featured}" class="badge bg-warning ms-1">
+                                                            <span th:if="${property.featured}" class="badge bg-warning">
                                                                 <i class="fas fa-star me-1"></i>Featured
                                                             </span>
                                                         </div>
                                                         <div class="property-actions">
-                                                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary btn-sm">
-                                                                <i class="fas fa-eye me-1"></i>View
+                                                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary btn-sm w-100">
+                                                                <i class="fas fa-arrow-right me-2"></i>View Details
                                                             </a>
                                                         </div>
                                                     </div>
@@ -247,10 +258,11 @@
             </div>
             
             <div class="row" th:if="${agents == null or agents.empty}">
-                <div class="col-12 text-center">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        No agents available at the moment.
+                <div class="col-12 text-center py-5">
+                    <div class="empty-state">
+                        <i class="fas fa-users fa-4x text-muted mb-4"></i>
+                        <h3 class="text-muted mb-3">No Agents Available</h3>
+                        <p class="text-muted">We're currently working on adding expert agents to our platform. Check back soon!</p>
                     </div>
                 </div>
             </div>
@@ -264,11 +276,19 @@
                 <div class="col-lg-4">
                     <h5>Real Estate Hub</h5>
                     <p>Your trusted partner in finding the perfect property in Bulgaria. We connect you with the best homes and expert agents.</p>
-                    <div class="d-flex gap-3">
-                        <a href="#" class="text-white"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="text-white"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="text-white"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="text-white"><i class="fab fa-linkedin-in"></i></a>
+                    <div class="d-flex gap-3 social-links">
+                        <a href="#" class="social-link" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
                     </div>
                 </div>
                 <div class="col-lg-2">
