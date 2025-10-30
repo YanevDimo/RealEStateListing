@@ -187,7 +187,9 @@
                             <div class="agent-info mb-3 p-2 bg-light rounded">
                                 <div class="d-flex align-items-center">
                                     <div class="agent-avatar me-2">
-                                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=40&auto=format&fit=crop" 
+                                        <img th:src="${property.agent.profilePictureUrl != null && !property.agent.profilePictureUrl.isEmpty()
+                                            ? property.agent.profilePictureUrl
+                                            : 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740&q=80'}" 
                                              class="rounded-circle" 
                                              width="40" 
                                              height="40" 

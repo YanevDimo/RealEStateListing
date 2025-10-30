@@ -47,8 +47,8 @@
                 <div class="col-lg-4">
                     <div class="card shadow">
                         <div class="card-body text-center">
-                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop"
-                                 class="agent-avatar mb-3" alt="Agent Photo">
+                            <img th:src="${agent.profilePictureUrl != null && !agent.profilePictureUrl.isEmpty() ? agent.profilePictureUrl : 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740&q=80'}"
+                                 class="rounded-circle mb-3" width="140" height="140" style="object-fit: cover;" alt="Agent Photo">
                             <h3 th:text="${agent.getAgentName()}">Agent Name</h3>
                             <p class="text-muted mb-3" th:text="${agent.licenseNumber}">License: AG-001</p>
                             
@@ -131,7 +131,7 @@
                             <div class="row" th:if="${agentProperties != null and !agentProperties.empty}">
                                 <div class="col-md-6 mb-3" th:each="property : ${agentProperties}">
                                     <div class="d-flex">
-                                        <img src="https://images.unsplash.com/photo-1501183638710-841dd1904471?q=80&w=150&auto=format&fit=crop" 
+                                        <img th:src="${property.getPrimaryImageUrl()}" 
                                              class="rounded me-3" width="80" height="80" alt="Property">
                                         <div>
                                             <h6 th:text="${property.title}">Property Title</h6>

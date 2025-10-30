@@ -100,7 +100,7 @@
             </div>
         </div>
     </section>
-
+    cities
     <!-- Agents with Properties -->
     <section class="section">
         <div class="container">
@@ -113,7 +113,7 @@
                                 <div class="col-lg-4">
                                     <div class="agent-info text-center">
                                         <div class="agent-avatar-wrapper mb-3">
-                                            <img th:src="${agent.profilePictureUrl != null ? agent.profilePictureUrl : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop'}" 
+                                            <img th:src="${agent.profilePictureUrl != null && !agent.profilePictureUrl.isEmpty() ? agent.profilePictureUrl : 'https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?semt=ais_hybrid&w=740&q=80'}" 
                                                  class="agent-avatar" alt="Agent Photo">
                                             <div class="agent-avatar-overlay">
                                                 <i class="fas fa-camera"></i>

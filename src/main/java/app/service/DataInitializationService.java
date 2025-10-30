@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 
@@ -22,26 +22,9 @@ public class DataInitializationService implements CommandLineRunner {
     private final PropertyTypeService propertyTypeService;
 
     @Override
-    @Transactional
     public void run(String... args) throws Exception {
-        log.info("Starting data initialization...");
-        
-        try {
-            // Always initialize cities and property types
-            initializeCitiesAndPropertyTypes();
-            
-            // Only create agents and properties if they don't exist
-            if (agentService.countAllAgents() == 0) {
-                log.info("No agents found, creating sample agents and properties");
-                initializeSampleAgentsAndProperties();
-            } else {
-                log.info("Agents already exist, skipping agent creation");
-            }
-            
-            log.info("Data initialization completed successfully");
-        } catch (Exception e) {
-            log.error("Error during data initialization", e);
-        }
+        log.info("Data initialization is currently disabled. Skipping seeding.");
+        return;
     }
 
     private void initializeCitiesAndPropertyTypes() {
@@ -186,19 +169,27 @@ public class DataInitializationService implements CommandLineRunner {
     }
 
     private City createCity(String name) {
-
-
         City city = City.builder()
                 .name(name)
                 .build();
-        return cityService.saveCity(city);
+        try {
+            return cityService.saveCity(city);
+        } catch (DataIntegrityViolationException e) {
+            // City already exists, return existing
+            return cityService.findCityByName(name).orElseThrow(() -> e);
+        }
     }
 
     private PropertyType createPropertyType(String name) {
         PropertyType type = PropertyType.builder()
                 .name(name)
                 .build();
-        return propertyTypeService.savePropertyType(type);
+        try {
+            return propertyTypeService.savePropertyType(type);
+        } catch (DataIntegrityViolationException e) {
+            // Type already exists, return existing
+            return propertyTypeService.findPropertyTypeByName(name).orElseThrow(() -> e);
+        }
     }
 
     private User createUser(String email, String name, String phone) {

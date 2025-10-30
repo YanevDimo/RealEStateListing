@@ -104,7 +104,7 @@ public class AgentController {
     @GetMapping("/dashboard")
     public ModelAndView showAgentDashboard(Authentication authentication) {
         log.debug("Showing agent dashboard");
-        ModelAndView modelAndView = new ModelAndView("dashboard/agent-dashboard-basic");
+        ModelAndView modelAndView = new ModelAndView("dashboard/agent-dashboard");
 
         try {
             // Get current user
