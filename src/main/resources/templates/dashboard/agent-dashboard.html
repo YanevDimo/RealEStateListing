@@ -241,7 +241,8 @@
                                                     </a>
                                                     <button type="button" 
                                                             class="btn btn-outline-danger btn-sm"
-                                                            th:onclick="|deleteProperty('${property.id}')|">
+                                                            onclick="deleteProperty(this.dataset.id)"
+                                                            th:attr="data-id=${property.id}">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
