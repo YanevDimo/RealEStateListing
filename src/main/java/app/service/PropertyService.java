@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -125,10 +126,8 @@ public class PropertyService {
                 .filter(property -> property.getBaths() >= baths)
                 .toList();
     }
+//      Find properties by area range
 
-    /**
-     * Find properties by area range
-     */
     public List<Property> findPropertiesByAreaRange(BigDecimal minArea, BigDecimal maxArea) {
         log.debug("Finding properties by area range: {} - {}", minArea, maxArea);
         return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
@@ -203,9 +202,7 @@ public class PropertyService {
                         if (minArea != null && areaSqm.compareTo(minArea) < 0) {
                             return false;
                         }
-                        if (maxArea != null && areaSqm.compareTo(maxArea) > 0) {
-                            return false;
-                        }
+                        return maxArea == null || areaSqm.compareTo(maxArea) <= 0;
                     }
                     
                     return true;
@@ -277,6 +274,7 @@ public class PropertyService {
 
 
     @Transactional
+    @CacheEvict(value = "featuredProperties", allEntries = true)
     public Property markAsFeatured(UUID id) {
         log.debug("Marking property as featured: {}", id);
         Property property = propertyRepository.findById(id)
@@ -287,6 +285,7 @@ public class PropertyService {
 
 
     @Transactional
+    @CacheEvict(value = "featuredProperties", allEntries = true)
     public Property removeFromFeatured(UUID id) {
         log.debug("Removing property from featured: {}", id);
         Property property = propertyRepository.findById(id)
@@ -327,5 +326,45 @@ public class PropertyService {
         return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
                 .filter(p -> p.getYearBuilt() != null && p.getYearBuilt() >= startYear && p.getYearBuilt() <= endYear)
                 .toList();
+    }
+
+    /**
+     * Cleanup old draft/pending properties that haven't been updated in 30 days.
+     * Called by scheduled job.
+     */
+    @Transactional
+    @CacheEvict(value = "featuredProperties", allEntries = true)
+    public int cleanupOldDraftProperties() {
+        log.debug("Cleaning up old draft/pending properties");
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        
+        List<Property> oldProperties = propertyRepository.findAll().stream()
+                .filter(p -> {
+                    // Find properties in PENDING status that are older than 30 days
+                    return (p.getStatus() == PropertyStatus.PENDING || p.getStatus() == PropertyStatus.INACTIVE) 
+                           && p.getUpdatedAt() != null 
+                           && p.getUpdatedAt().isBefore(thirtyDaysAgo);
+                })
+                .toList();
+        
+        int count = 0;
+        for (Property property : oldProperties) {
+            property.setStatus(PropertyStatus.INACTIVE);
+            propertyRepository.save(property);
+            count++;
+        }
+        
+        log.info("Cleaned up {} old draft/pending properties", count);
+        return count;
+    }
+
+
+//      Update property statistics cache.
+//      Called by scheduled job.
+
+    @CacheEvict(value = "statistics", allEntries = true)
+    public void updatePropertyStatistics() {
+        log.debug("Updating property statistics");
+
     }
 }

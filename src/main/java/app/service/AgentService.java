@@ -328,6 +328,40 @@ public class AgentService {
     }
 
 
+
+//      Recalculate agent ratings based on recent activity.
+//      Called by scheduled job.
+
+    @Transactional
+    public int recalculateAgentRatings() {
+        log.debug("Recalculating agent ratings");
+        List<Agent> agents = agentRepository.findAll();
+        int updatedCount = 0;
+        
+        for (Agent agent : agents) {
+            // Simple rating calculation based on total listings and experience
+           
+            if (agent.getTotalListings() != null && agent.getTotalListings() > 0) {
+                // Base rating on listings and experience
+                BigDecimal newRating = BigDecimal.valueOf(
+                    Math.min(5.0, 
+                        3.0 + (agent.getTotalListings() * 0.1) + 
+                        (agent.getExperienceYears() != null ? agent.getExperienceYears() * 0.05 : 0)
+                    )
+                );
+                
+                if (agent.getRating() == null || !agent.getRating().equals(newRating)) {
+                    agent.setRating(newRating);
+                    agentRepository.save(agent);
+                    updatedCount++;
+                }
+            }
+        }
+        
+        log.info("Recalculated ratings for {} agents", updatedCount);
+        return updatedCount;
+    }
+
     public static class AgentStatistics {
         private final long totalAgents;
         private final BigDecimal averageRating;

@@ -4,6 +4,8 @@ import app.entity.City;
 import app.repository.CityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,12 +24,14 @@ public class CityService {
     private final CityRepository cityRepository;
 
 
+    @Cacheable("cities")
     public List<City> findAllCities() {
         log.debug("Finding all cities");
         return cityRepository.findAll();
     }
 
     @Transactional
+    @CacheEvict(value = "cities", allEntries = true)
     public City saveCity(City city) {
         log.debug("Saving city: {}", city.getName());
         return cityRepository.save(city);

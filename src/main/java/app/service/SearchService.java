@@ -6,6 +6,7 @@ import app.entity.PropertyStatus;
 import app.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -106,8 +107,9 @@ public class SearchService {
     }
 
     /**
-     * Get featured properties
+     * Get featured properties - cached for performance
      */
+    @Cacheable("featuredProperties")
     public List<Property> getFeaturedProperties() {
         log.debug("Getting featured properties");
         return propertyRepository.findByFeaturedTrueAndStatus(PropertyStatus.ACTIVE);
@@ -185,6 +187,7 @@ public class SearchService {
     }
 
 
+    @Cacheable(value = "cities", key = "'names'")
     public List<String> getAvailableCities() {
         log.debug("Getting available cities for search");
         return cityService.findAllCities().stream()
@@ -194,6 +197,7 @@ public class SearchService {
     }
 
 
+    @org.springframework.cache.annotation.Cacheable(value = "propertyTypes", key = "'names'")
     public List<String> getAvailablePropertyTypes() {
         log.debug("Getting available property types for search");
         return propertyTypeService.findAllPropertyTypes().stream()
@@ -233,7 +237,6 @@ public class SearchService {
             this.featured = featured;
         }
 
-        // Getters and Setters
         public String getSearchTerm() { return searchTerm; }
         public void setSearchTerm(String searchTerm) { this.searchTerm = searchTerm; }
 

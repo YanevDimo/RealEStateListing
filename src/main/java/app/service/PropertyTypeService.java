@@ -5,6 +5,8 @@ import app.entity.PropertyType;
 import app.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,12 +24,14 @@ public class PropertyTypeService {
     private final PropertyTypeRepository propertyTypeRepository;
 
 
+    @Cacheable("propertyTypes")
     public List<PropertyType> findAllPropertyTypes() {
         log.debug("Finding all property types");
         return propertyTypeRepository.findAll();
     }
 
     @Transactional
+    @CacheEvict(value = "propertyTypes", allEntries = true)
     public PropertyType savePropertyType(PropertyType propertyType) {
         log.debug("Saving property type: {}", propertyType.getName());
         return propertyTypeRepository.save(propertyType);
