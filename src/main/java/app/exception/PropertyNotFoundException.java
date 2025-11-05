@@ -1,5 +1,7 @@
 package app.exception;
 
+import java.util.UUID;
+
 /**
  * Exception thrown when a property is not found
  */
@@ -8,7 +10,7 @@ public class PropertyNotFoundException extends ApplicationException {
         super(message);
     }
 
-    public PropertyNotFoundException(java.util.UUID id) {
+    public PropertyNotFoundException(UUID id) {
         super("Property not found with ID: " + id);
     }
 }

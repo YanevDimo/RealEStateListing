@@ -14,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = {"user", "property"})
+@ToString(exclude = {"user"})
 public class Favorite {
 
     @Id
@@ -25,9 +25,8 @@ public class Favorite {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id", nullable = false)
-    private Property property;
+    @Column(name = "property_id", nullable = false)
+    private UUID propertyId; // Reference to property in property-service
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

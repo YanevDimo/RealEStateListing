@@ -55,8 +55,8 @@
     <!-- Modern Hero Section -->
     <section class="hero-section">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
+            <div class="row align-items-center justify-content-center">
+                <div class="col-lg-8 col-xl-7">
                     <div class="hero-content">
                         <h1 class="hero-title">Find Your Dream Home in Bulgaria</h1>
                         <p class="hero-subtitle">Discover the perfect property with our comprehensive listings, expert agents, and personalized service. Your dream home awaits.</p>
@@ -104,15 +104,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="hero-image text-center fade-in">
-                        <div class="hero-image-wrapper">
-                            <img src="https://cdn.pixabay.com/photo/2018/02/13/11/09/home-3150500_1280.jpg" 
-                                 alt="Beautiful Home" class="img-fluid rounded-3 shadow-lg hero-img">
-                            <div class="hero-overlay"></div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
@@ -128,7 +119,7 @@
                     <div class="card property-card h-100 fade-in" th:style="'animation-delay: ' + ${iterStat.index * 0.1} + 's;'">
                         <div class="property-image-wrapper position-relative">
                             <img th:src="${property.getPrimaryImageUrl()}" class="card-img-top property-image" alt="Property Image">
-                            <div class="featured-badge" th:if="${property.featured}">
+                            <div class="featured-badge" th:if="${property.isFeatured != null and property.isFeatured}">
                                 <i class="fas fa-star me-1"></i>Featured
                             </div>
                             <div class="property-overlay">
@@ -140,9 +131,9 @@
                         <div class="card-body">
                             <div class="property-price" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€150,000</div>
                             <h5 class="property-title" th:text="${property.title}">Modern Apartment in Sofia Center</h5>
-                            <div class="property-location" th:if="${property.city != null}">
+                            <div class="property-location" th:if="${property.cityName != null}">
                                 <i class="fas fa-map-marker-alt"></i>
-                                <span th:text="${property.city.name}">Sofia</span>
+                                <span th:text="${property.cityName}">Sofia</span>
                             </div>
                             <div class="property-features">
                                 <div class="property-feature" th:if="${property.beds != null}">

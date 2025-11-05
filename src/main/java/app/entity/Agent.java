@@ -8,7 +8,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -18,7 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = {"user", "properties"})
+@ToString(exclude = {"user"})
 public class Agent {
 
     @Id
@@ -63,13 +62,8 @@ public class Agent {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    /**
-     * -- SETTER --
-     *  Set properties list (needed for template population)
-     */
-    // Relationships
-    @OneToMany(mappedBy = "agent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Property> properties;
+    // Note: Properties are now managed in property-service microservice
+    // Properties are referenced via UUID (agentId) in property-service
 
     // Helper methods
     public String getAgentName() {
@@ -99,13 +93,6 @@ public class Agent {
         } catch (Exception e) {
             return specializations; // Return as-is if parsing fails
         }
-    }
-
-    /**
-     * Set properties list (needed for template population)
-     */
-    public void setProperties(List<Property> properties) {
-        this.properties = properties;
     }
 
 }

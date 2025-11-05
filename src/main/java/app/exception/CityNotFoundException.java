@@ -1,5 +1,7 @@
 package app.exception;
 
+import java.util.UUID;
+
 /**
  * Exception thrown when a city is not found
  */
@@ -8,7 +10,7 @@ public class CityNotFoundException extends ApplicationException {
         super(message);
     }
 
-    public CityNotFoundException(java.util.UUID id) {
+    public CityNotFoundException(UUID id) {
         super("City not found with ID: " + id);
     }
 }

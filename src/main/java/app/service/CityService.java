@@ -1,5 +1,7 @@
 package app.service;
 
+import app.client.PropertyServiceClient;
+import app.dto.PropertyDto;
 import app.entity.City;
 import app.repository.CityRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,8 @@ import java.util.UUID;
 public class CityService {
 
     private final CityRepository cityRepository;
+    private final PropertyServiceClient propertyServiceClient;
+    private final PropertyUtilityService propertyUtilityService;
 
 
     @Cacheable("cities")
@@ -109,18 +113,21 @@ public class CityService {
     public List<City> findCitiesWithActiveProperties() {
         log.debug("Finding cities with active properties");
         return cityRepository.findAll().stream()
-                .filter(c -> c.getProperties() != null && !c.getProperties().isEmpty())
+                .filter(c -> propertyUtilityService.hasActiveProperties(c.getId()))
                 .toList();
     }
 
 
     public List<City> findCitiesOrderedByPropertyCount() {
         log.debug("Finding cities ordered by property count");
+        
+        // Count properties per city using utility service
         return cityRepository.findAll().stream()
-                .sorted((a, b) -> Integer.compare(
-                    b.getProperties() != null ? b.getProperties().size() : 0,
-                    a.getProperties() != null ? a.getProperties().size() : 0
-                ))
+                .sorted((a, b) -> {
+                    long countA = propertyUtilityService.countActivePropertiesByCityId(a.getId());
+                    long countB = propertyUtilityService.countActivePropertiesByCityId(b.getId());
+                    return Long.compare(countB, countA); // Descending order
+                })
                 .toList();
     }
 
@@ -158,9 +165,15 @@ public class CityService {
 
     public long countActivePropertiesByCity(UUID cityId) {
         log.debug("Counting active properties by city: {}", cityId);
-        return cityRepository.findById(cityId)
-                .map(city -> city.getProperties() != null ? city.getProperties().size() : 0)
-                .orElse(0);
+        try {
+            List<PropertyDto> properties = propertyServiceClient.getPropertiesByCity(cityId);
+            return properties.stream()
+                    .filter(p -> p.getStatus() == null || "ACTIVE".equals(p.getStatus()))
+                    .count();
+        } catch (Exception e) {
+            log.error("Error counting properties from property-service for city: {}", cityId, e);
+            return 0;
+        }
     }
 
 

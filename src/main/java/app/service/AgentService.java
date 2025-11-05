@@ -1,6 +1,7 @@
 package app.service;
 
-
+import app.client.PropertyServiceClient;
+import app.dto.PropertyDto;
 import app.entity.Agent;
 import app.entity.User;
 import app.repository.AgentRepository;
@@ -26,6 +27,8 @@ public class AgentService {
 
     private final AgentRepository agentRepository;
     private final UserRepository userRepository;
+    private final PropertyServiceClient propertyServiceClient;
+    private final PropertyUtilityService propertyUtilityService;
 
 
     public List<Agent> findAllAgents() {
@@ -162,7 +165,7 @@ public class AgentService {
     public List<Agent> findAgentsWithActiveProperties() {
         log.debug("Finding agents with active properties");
         return agentRepository.findAll().stream()
-                .filter(a -> a.getProperties() != null && !a.getProperties().isEmpty())
+                .filter(a -> propertyUtilityService.agentHasActiveProperties(a.getId()))
                 .toList();
     }
 
@@ -201,9 +204,15 @@ public class AgentService {
 
     public long countActivePropertiesByAgent(UUID agentId) {
         log.debug("Counting active properties by agent: {}", agentId);
-        return agentRepository.findById(agentId)
-                .map(agent -> agent.getProperties() != null ? agent.getProperties().size() : 0)
-                .orElse(0);
+        try {
+            List<PropertyDto> properties = propertyServiceClient.getPropertiesByAgent(agentId);
+            return properties.stream()
+                    .filter(p -> p.getStatus() == null || "ACTIVE".equals(p.getStatus()))
+                    .count();
+        } catch (Exception e) {
+            log.error("Error counting properties from property-service for agent: {}", agentId, e);
+            return 0;
+        }
     }
 
 

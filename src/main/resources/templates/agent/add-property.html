@@ -55,6 +55,8 @@
 
                             <!-- Add Property Form -->
                             <form th:action="@{/agent/properties/add}" th:object="${propertyDto}" method="post" enctype="multipart/form-data">
+                                <!-- CSRF Token -->
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 
                                 <!-- Basic Information -->
                                 <div class="row mb-4">
@@ -294,11 +296,11 @@
                                 </div>
 
                                 <!-- Submit Buttons -->
-                                <div class="d-flex gap-3">
-                                    <button type="submit" class="btn btn-primary btn-lg">
-                                        <i class="fas fa-plus me-2"></i>Add Property
+                                <div class="d-flex gap-3 justify-content-center mt-4">
+                                    <button type="submit" class="btn btn-primary btn-lg px-5">
+                                        <i class="fas fa-plus me-2"></i>Add Property to Database
                                     </button>
-                                    <a href="/agent/dashboard" class="btn btn-outline-secondary btn-lg">
+                                    <a href="/agent/dashboard" class="btn btn-outline-secondary btn-lg px-5">
                                         <i class="fas fa-times me-2"></i>Cancel
                                     </a>
                                 </div>

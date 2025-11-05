@@ -7,7 +7,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -19,7 +18,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = "features")
+@ToString
 public class FeatureCategory {
 
     @Id
@@ -38,7 +37,6 @@ public class FeatureCategory {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Relationships
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<PropertyFeature> features;
+    // Note: PropertyFeature entity has been moved to property-service
+    // This relationship is no longer valid
 }

@@ -1,6 +1,7 @@
 package app.service;
 
-
+import app.client.PropertyServiceClient;
+import app.dto.PropertyDto;
 import app.entity.PropertyType;
 import app.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,8 @@ import java.util.UUID;
 public class PropertyTypeService {
 
     private final PropertyTypeRepository propertyTypeRepository;
+    private final PropertyServiceClient propertyServiceClient;
+    private final PropertyUtilityService propertyUtilityService;
 
 
     @Cacheable("propertyTypes")
@@ -72,18 +75,21 @@ public class PropertyTypeService {
     public List<PropertyType> findPropertyTypesWithActiveProperties() {
         log.debug("Finding property types with active properties");
         return propertyTypeRepository.findAll().stream()
-                .filter(pt -> pt.getProperties() != null && !pt.getProperties().isEmpty())
+                .filter(pt -> propertyUtilityService.propertyTypeHasActiveProperties(pt.getId()))
                 .toList();
     }
 
 
     public List<PropertyType> findPropertyTypesOrderedByPropertyCount() {
         log.debug("Finding property types ordered by property count");
+        
+        // Count properties per property type using utility service
         return propertyTypeRepository.findAll().stream()
-                .sorted((a, b) -> Integer.compare(
-                    b.getProperties() != null ? b.getProperties().size() : 0,
-                    a.getProperties() != null ? a.getProperties().size() : 0
-                ))
+                .sorted((a, b) -> {
+                    long countA = propertyUtilityService.countActivePropertiesByPropertyTypeId(a.getId());
+                    long countB = propertyUtilityService.countActivePropertiesByPropertyTypeId(b.getId());
+                    return Long.compare(countB, countA); // Descending order
+                })
                 .toList();
     }
 
@@ -129,9 +135,15 @@ public class PropertyTypeService {
 
     public long countActivePropertiesByPropertyType(UUID propertyTypeId) {
         log.debug("Counting active properties by property type: {}", propertyTypeId);
-        return propertyTypeRepository.findById(propertyTypeId)
-                .map(pt -> pt.getProperties() != null ? pt.getProperties().size() : 0)
-                .orElse(0);
+        try {
+            List<PropertyDto> properties = propertyServiceClient.getAllProperties(null, null, propertyTypeId, null);
+            return properties.stream()
+                    .filter(p -> p.getStatus() == null || "ACTIVE".equals(p.getStatus()))
+                    .count();
+        } catch (Exception e) {
+            log.error("Error counting properties from property-service for property type: {}", propertyTypeId, e);
+            return 0;
+        }
     }
 
 

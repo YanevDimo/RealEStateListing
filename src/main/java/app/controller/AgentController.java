@@ -1,11 +1,11 @@
 package app.controller;
 
 
+import app.client.PropertyServiceClient;
 import app.dto.AgentRegistrationDto;
 import app.dto.PropertyDto;
+import app.dto.PropertyUpdateDto;
 import app.entity.Agent;
-import app.entity.Property;
-import app.entity.PropertyImage;
 import app.entity.User;
 import app.exception.*;
 import app.service.*;
@@ -32,7 +32,7 @@ public class AgentController {
     private final AgentRegistrationService agentRegistrationService;
     private final AgentService agentService;
     private final UserService userService;
-    private final PropertyService propertyService;
+    private final PropertyServiceClient propertyServiceClient;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
     private final FileUploadService fileUploadService;
@@ -116,13 +116,13 @@ public class AgentController {
             Agent agent = agentService.findAgentByUserId(user.getId())
                     .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
 
-            // Get agent's properties
-            List<Property> agentProperties = propertyService.findPropertiesByAgent(agent.getId());
+            // Get agent's properties from property-service
+            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
 
             // Get statistics
             long totalProperties = agentProperties.size();
             long activeProperties = agentProperties.stream()
-                    .filter(p -> p.getStatus().name().equals("ACTIVE"))
+                    .filter(p -> p.getStatus() != null && p.getStatus().equals("ACTIVE"))
                     .count();
 
             modelAndView.addObject("agent", agent);
@@ -202,28 +202,39 @@ public class AgentController {
                 }
             }
 
-            // Create property
-            Property property = agentRegistrationService.createPropertyForAgent(agent.getId(), propertyDto);
-            
-            // Add property images
+            // Add image URLs to PropertyDto (if any)
             if (!imageUrls.isEmpty()) {
-                for (int i = 0; i < imageUrls.size(); i++) {
-                    PropertyImage propertyImage = PropertyImage.builder()
-                            .property(property)
-                            .imageUrl(imageUrls.get(i))
-                            .isPrimary(i == 0) // First image is primary
-                            .sortOrder(i)
-                            .build();
-                    propertyService.savePropertyImage(propertyImage);
-                }
+                propertyDto.setImageUrls(imageUrls);
+                log.info("✅ Set {} image URLs on PropertyDto: {}", imageUrls.size(), imageUrls);
+            } else {
+                log.warn("⚠️ No image URLs to set! imageUrls list is empty. Uploaded files count: {}", 
+                        propertyDto.getImages() != null ? propertyDto.getImages().size() : 0);
             }
             
-            log.info("Property created successfully with ID: {} and {} images", 
-                    property.getId(), imageUrls.size());
+            // Verify imageUrls are set before sending
+            log.info("PropertyDto imageUrls before sending: {}", propertyDto.getImageUrls());
             
-            redirectAttributes.addFlashAttribute("successMessage", 
-                    "Property added successfully with " + imageUrls.size() + " images!");
-            return new ModelAndView("redirect:/agent/dashboard");
+            // Create property via property-service
+            log.info("Attempting to create property for agent: {} via Property Service", agent.getId());
+            PropertyDto property;
+            try {
+                property = agentRegistrationService.createPropertyForAgent(agent.getId(), propertyDto);
+                
+                if (property == null || property.getId() == null) {
+                    log.error("Property creation returned null or property without ID");
+                    throw new RuntimeException("Property Service failed to create property. Received null or invalid response.");
+                }
+                
+                log.info("Property created successfully via Property Service with ID: {} and {} images", 
+                        property.getId(), imageUrls.size());
+                
+                redirectAttributes.addFlashAttribute("successMessage", 
+                        "Property added successfully! Property ID: " + property.getId());
+                return new ModelAndView("redirect:/agent/dashboard");
+            } catch (Exception e) {
+                log.error("Error creating property via Property Service: {}", e.getMessage(), e);
+                throw e; // Re-throw to be caught by outer catch block
+            }
 
         } catch (Exception e) {
             log.error("Error adding property", e);
@@ -253,30 +264,18 @@ public class AgentController {
             Agent agent = agentService.findAgentByUserId(user.getId())
                     .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
 
-            Property property = propertyService.findPropertyById(id)
-                    .orElseThrow(() -> new PropertyNotFoundException("Property not found"));
+            PropertyDto property = propertyServiceClient.getPropertyById(id);
+            if (property == null) {
+                throw new PropertyNotFoundException("Property not found");
+            }
 
             // Check if agent owns this property
-            if (!property.getAgent().getId().equals(agent.getId())) {
+            if (!property.getAgentId().equals(agent.getId())) {
                 throw new ApplicationException("You don't have permission to edit this property");
             }
 
-            // Convert to DTO
-            PropertyDto propertyDto = PropertyDto.builder()
-                    .title(property.getTitle())
-                    .description(property.getDescription())
-                    .propertyTypeId(property.getPropertyType().getId())
-                    .cityId(property.getCity().getId())
-                    .address(property.getAddress())
-                    .price(property.getPrice())
-                    .beds(property.getBeds())
-                    .baths(property.getBaths())
-                    .areaSqm(property.getAreaSqm())
-                    .yearBuilt(property.getYearBuilt())
-                    .latitude(property.getLatitude())
-                    .longitude(property.getLongitude())
-                    .featured(property.getFeatured())
-                    .build();
+            // PropertyDto already has all the data we need
+            PropertyDto propertyDto = property;
 
             modelAndView.addObject("propertyDto", propertyDto);
             modelAndView.addObject("propertyId", id);
@@ -316,39 +315,37 @@ public class AgentController {
             Agent agent = agentService.findAgentByUserId(user.getId())
                     .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
 
-            Property property = propertyService.findPropertyById(id)
-                    .orElseThrow(() -> new PropertyNotFoundException("Property not found"));
+            PropertyDto property = propertyServiceClient.getPropertyById(id);
+            if (property == null) {
+                throw new PropertyNotFoundException("Property not found");
+            }
 
             // Check if agent owns this property
-            if (!property.getAgent().getId().equals(agent.getId())) {
+            if (!property.getAgentId().equals(agent.getId())) {
                 throw new ApplicationException("You don't have permission to edit this property");
             }
 
-            // Update property
-            property.setTitle(propertyDto.getTitle());
-            property.setDescription(propertyDto.getDescription());
-            property.setAddress(propertyDto.getAddress());
-            property.setPrice(propertyDto.getPrice());
-            property.setBeds(propertyDto.getBeds() != null ? propertyDto.getBeds() : 0);
-            property.setBaths(propertyDto.getBaths() != null ? propertyDto.getBaths() : 0);
-            property.setAreaSqm(propertyDto.getAreaSqm());
-            property.setYearBuilt(propertyDto.getYearBuilt());
-            property.setLatitude(propertyDto.getLatitude());
-            property.setLongitude(propertyDto.getLongitude());
-            property.setFeatured(propertyDto.getFeatured() != null ? propertyDto.getFeatured() : false);
+            // Convert PropertyDto to PropertyUpdateDto
+            PropertyUpdateDto updateDto = PropertyUpdateDto.builder()
+                    .title(propertyDto.getTitle())
+                    .description(propertyDto.getDescription())
+                    .price(propertyDto.getPrice())
+                    .agentId(property.getAgentId()) // Keep same agent
+                    .cityId(propertyDto.getCityId())
+                    .propertyTypeId(propertyDto.getPropertyTypeId())
+                    .status(propertyDto.getStatus() != null ? propertyDto.getStatus() : property.getStatus())
+                    .bedrooms(propertyDto.getBedrooms() != null ? propertyDto.getBedrooms() : 
+                             (propertyDto.getBeds() != null ? propertyDto.getBeds() : property.getBedrooms()))
+                    .bathrooms(propertyDto.getBathrooms() != null ? propertyDto.getBathrooms() : 
+                              (propertyDto.getBaths() != null ? propertyDto.getBaths() : property.getBathrooms()))
+                    .squareFeet(propertyDto.getSquareFeet() != null ? propertyDto.getSquareFeet() : 
+                               (propertyDto.getAreaSqm() != null ? propertyDto.getAreaSqm().intValue() : property.getSquareFeet()))
+                    .address(propertyDto.getAddress())
+                    .features(propertyDto.getFeatures())
+                    .build();
 
-            // Update property type and city if changed
-            if (!property.getPropertyType().getId().equals(propertyDto.getPropertyTypeId())) {
-                property.setPropertyType(propertyTypeService.findPropertyTypeById(propertyDto.getPropertyTypeId())
-                        .orElseThrow(() -> new PropertyTypeNotFoundException("Property type not found")));
-            }
-
-            if (!property.getCity().getId().equals(propertyDto.getCityId())) {
-                property.setCity(cityService.findCityById(propertyDto.getCityId())
-                        .orElseThrow(() -> new CityNotFoundException("City not found")));
-            }
-
-            propertyService.updateProperty(property);
+            // Update property via property-service
+            propertyServiceClient.updateProperty(id, updateDto);
             
             log.info("Property updated successfully with ID: {}", id);
             
@@ -382,16 +379,18 @@ public class AgentController {
             Agent agent = agentService.findAgentByUserId(user.getId())
                     .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
 
-            Property property = propertyService.findPropertyById(id)
-                    .orElseThrow(() -> new PropertyNotFoundException("Property not found"));
+            PropertyDto property = propertyServiceClient.getPropertyById(id);
+            if (property == null) {
+                throw new PropertyNotFoundException("Property not found");
+            }
 
             // Check if agent owns this property
-            if (!property.getAgent().getId().equals(agent.getId())) {
+            if (!property.getAgentId().equals(agent.getId())) {
                 throw new ApplicationException("You don't have permission to delete this property");
             }
 
-            // Delete property
-            propertyService.deleteProperty(id);
+            // Delete property via property-service
+            propertyServiceClient.deleteProperty(id);
             
             // Decrement agent's listing count
             agentService.decrementAgentListings(agent.getId());

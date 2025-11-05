@@ -1,7 +1,10 @@
 package app.service;
 
-
-import app.entity.*;
+import app.entity.Agent;
+import app.entity.City;
+import app.entity.PropertyType;
+import app.entity.User;
+import app.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -17,20 +20,26 @@ public class DataInitializationService implements CommandLineRunner {
 
     private final UserService userService;
     private final AgentService agentService;
-    private final PropertyService propertyService;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
 
     @Override
     public void run(String... args) throws Exception {
-        log.info("Data initialization is currently disabled. Skipping seeding.");
-        return;
+        log.info("Starting data initialization...");
+        try {
+            // Initialize cities and property types (master data for main app)
+            initializeCitiesAndPropertyTypes();
+            log.info("Data initialization completed successfully.");
+        } catch (Exception e) {
+            log.error("Error during data initialization", e);
+            // Don't fail application startup if seeding fails
+        }
+        // Note: Property seeding is handled by Property Service microservice
     }
 
     private void initializeCitiesAndPropertyTypes() {
         log.info("Initializing cities and property types...");
-        
-        // Create Bulgarian cities
+
         createCityIfNotExists("Sofia");
         createCityIfNotExists("Plovdiv");
         createCityIfNotExists("Varna");
@@ -117,55 +126,16 @@ public class DataInitializationService implements CommandLineRunner {
         createPropertyTypeIfNotExists("Warehouse");
         createPropertyTypeIfNotExists("Land");
         createPropertyTypeIfNotExists("Farm");
-        
+
         log.info("Cities and property types initialization completed");
     }
 
+    // Note: Property creation removed - properties are now managed by Property Service microservice
+    // This method is kept for reference but should not be used
     private void initializeSampleAgentsAndProperties() {
-        // Get existing cities and property types
-        City sofia = cityService.findCityByName("Sofia").orElse(createCity("Sofia"));
-        City plovdiv = cityService.findCityByName("Plovdiv").orElse(createCity("Plovdiv"));
-        City varna = cityService.findCityByName("Varna").orElse(createCity("Varna"));
-
-        PropertyType apartment = propertyTypeService.findPropertyTypeByName("Apartment").orElse(createPropertyType("Apartment"));
-        PropertyType house = propertyTypeService.findPropertyTypeByName("House").orElse(createPropertyType("House"));
-        PropertyType villa = propertyTypeService.findPropertyTypeByName("Villa").orElse(createPropertyType("Villa"));
-
-        // Create users and agents
-        User user1 = createUser("john.smith@example.com", "John Smith", "+359888123456");
-        Agent agent1 = createAgent(user1, "LIC001", "Experienced real estate agent specializing in Sofia properties", 5, "[\"Residential\", \"Commercial\"]");
-
-        User user2 = createUser("sarah.johnson@example.com", "Sarah Johnson", "+359888123457");
-        Agent agent2 = createAgent(user2, "LIC002", "Luxury property specialist with 10+ years experience", 10, "[\"Luxury Homes\", \"Villas\"]");
-
-        User user3 = createUser("michael.brown@example.com", "Michael Brown", "+359888123458");
-        Agent agent3 = createAgent(user3, "LIC003", "Expert in residential properties and first-time buyers", 7, "[\"Residential\", \"New Construction\"]");
-
-        // Create sample properties
-        createProperty("Beautiful 3-bedroom apartment in Sofia center", 
-                     "Modern apartment with stunning city views, fully furnished", 
-                     apartment, sofia, "Vitosha Blvd 15", 
-                     new BigDecimal("150000"), 3, 2, new BigDecimal("120.50"), 2020, agent1);
-
-        createProperty("Luxury villa with garden in Plovdiv", 
-                     "Spacious villa with private garden, perfect for families", 
-                     villa, plovdiv, "Tsar Boris III 25", 
-                     new BigDecimal("250000"), 4, 3, new BigDecimal("200.00"), 2018, agent2);
-
-        createProperty("Cozy house near Varna beach", 
-                     "Charming house just 5 minutes from the beach", 
-                     house, varna, "Primorski Blvd 10", 
-                     new BigDecimal("180000"), 3, 2, new BigDecimal("150.75"), 2019, agent3);
-
-        createProperty("Modern apartment with sea view", 
-                     "Brand new apartment with panoramic sea views", 
-                     apartment, varna, "Morska Gradina 5", 
-                     new BigDecimal("200000"), 2, 2, new BigDecimal("95.00"), 2021, agent1);
-
-        createProperty("Family house with large yard", 
-                     "Perfect family home with spacious yard for children", 
-                     house, sofia, "Boyana District 12", 
-                     new BigDecimal("220000"), 4, 3, new BigDecimal("180.00"), 2017, agent2);
+        // Properties are now created via Property Service microservice
+        // This method is disabled as properties are managed externally
+        log.debug("Property initialization disabled - properties are managed by Property Service");
     }
 
     private City createCity(String name) {
@@ -217,31 +187,14 @@ public class DataInitializationService implements CommandLineRunner {
         return agentService.saveAgent(agent);
     }
 
-    private Property createProperty(String title, String description, PropertyType type, City city, 
-                                  String address, BigDecimal price, int beds, int baths, 
-                                  BigDecimal areaSqm, int yearBuilt, Agent agent) {
-        Property property = Property.builder()
-                .title(title)
-                .description(description)
-                .propertyType(type)
-                .city(city)
-                .address(address)
-                .price(price)
-                .beds(beds)
-                .baths(baths)
-                .areaSqm(areaSqm)
-                .yearBuilt(yearBuilt)
-                .agent(agent)
-                .status(PropertyStatus.ACTIVE)
-                .featured(false)
-                .build();
-        
-        Property savedProperty = propertyService.saveProperty(property);
-        
-        // Update agent's listing count
-        agentService.incrementAgentListings(agent.getId());
-        
-        return savedProperty;
+    // Note: Property creation removed - properties are now managed by Property Service microservice
+    // This method is disabled as Property entity no longer exists in main app
+    private void createProperty(String title, String description, PropertyType type, City city,
+                               String address, BigDecimal price, int beds, int baths,
+                               BigDecimal areaSqm, int yearBuilt, Agent agent) {
+        // Properties are now created via Property Service REST API
+        // Use PropertyServiceClient.createProperty() instead
+        log.debug("Property creation disabled - properties are managed by Property Service microservice");
     }
 
     private City createCityIfNotExists(String name) {
@@ -254,10 +207,3 @@ public class DataInitializationService implements CommandLineRunner {
                 .orElseGet(() -> createPropertyType(name));
     }
 }
-
-
-
-
-
-
-

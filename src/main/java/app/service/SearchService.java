@@ -1,189 +1,234 @@
 package app.service;
 
-
-import app.entity.Property;
-import app.entity.PropertyStatus;
-import app.repository.PropertyRepository;
+import app.client.PropertyServiceClient;
+import app.dto.PropertyDto;
+import app.entity.City;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional(readOnly = true)
 public class SearchService {
 
-    private final PropertyRepository propertyRepository;
+    private final PropertyServiceClient propertyServiceClient;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
+    private final PropertyUtilityService propertyUtilityService;
 
 
-    public List<Property> searchProperties(SearchCriteria criteria) {
+    public List<PropertyDto> searchProperties(SearchCriteria criteria) {
         log.debug("Searching properties with criteria: {}", criteria);
         
-        // Get all active properties and filter in memory
-        List<Property> allProperties = propertyRepository.findByStatus(PropertyStatus.ACTIVE);
-        
-        return allProperties.stream()
-                .filter(property -> {
-                    // Filter by city
-                    if (criteria.getCityName() != null && !criteria.getCityName().trim().isEmpty()) {
-                        if (!property.getCity().getName().equalsIgnoreCase(criteria.getCityName().trim())) {
+        try {
+            // Convert city name to UUID
+            java.util.UUID cityId = null;
+            if (criteria.getCityName() != null && !criteria.getCityName().trim().isEmpty()) {
+                cityId = cityService.findCityByNameIgnoreCase(criteria.getCityName().trim())
+                        .map(City::getId)
+                        .orElse(null);
+            }
+            
+            // Convert property type name to UUID
+            UUID propertyTypeId = null;
+            if (criteria.getPropertyTypeName() != null && !criteria.getPropertyTypeName().trim().isEmpty()) {
+                propertyTypeId = propertyTypeService.findPropertyTypeByNameIgnoreCase(criteria.getPropertyTypeName().trim())
+                        .map(pt -> pt.getId())
+                        .orElse(null);
+            }
+            
+            // Call property-service
+            Double maxPrice = criteria.getMaxPrice() != null ? criteria.getMaxPrice().doubleValue() : null;
+            List<PropertyDto> properties = propertyServiceClient.searchProperties(
+                    criteria.getSearchTerm(),
+                    cityId,
+                    propertyTypeId,
+                    maxPrice
+            );
+            log.info("Property-service returned {} properties for search criteria", properties != null ? properties.size() : 0);
+            
+            // Apply additional filters in memory (beds, baths, area, featured, minPrice)
+            return properties.stream()
+                    .filter(property -> {
+                        // Filter by min price
+                        if (criteria.getMinPrice() != null && 
+                            (property.getPrice() == null || property.getPrice().compareTo(criteria.getMinPrice()) < 0)) {
                             return false;
                         }
-                    }
-                    
-                    // Filter by property type
-                    if (criteria.getPropertyTypeName() != null && !criteria.getPropertyTypeName().trim().isEmpty()) {
-                        if (!property.getPropertyType().getName().equalsIgnoreCase(criteria.getPropertyTypeName().trim())) {
+                        
+                        // Filter by beds
+                        if (criteria.getMinBeds() != null && 
+                            (property.getBeds() == null || property.getBeds() < criteria.getMinBeds())) {
                             return false;
                         }
-                    }
-                    
-                    // Filter by price range
-                    if (criteria.getMinPrice() != null && property.getPrice().compareTo(criteria.getMinPrice()) < 0) {
-                        return false;
-                    }
-                    if (criteria.getMaxPrice() != null && property.getPrice().compareTo(criteria.getMaxPrice()) > 0) {
-                        return false;
-                    }
-                    
-                    // Filter by beds
-                    if (criteria.getMinBeds() != null && property.getBeds() < criteria.getMinBeds()) {
-                        return false;
-                    }
-                    
-                    // Filter by baths
-                    if (criteria.getMinBaths() != null && property.getBaths() < criteria.getMinBaths()) {
-                        return false;
-                    }
-                    
-                    // Filter by area range
-                    if (criteria.getMinArea() != null && property.getAreaSqm().compareTo(criteria.getMinArea()) < 0) {
-                        return false;
-                    }
-                    if (criteria.getMaxArea() != null && property.getAreaSqm().compareTo(criteria.getMaxArea()) > 0) {
-                        return false;
-                    }
-                    
-                    // Filter by featured
-                    return criteria.getFeatured() == null || property.getFeatured().equals(criteria.getFeatured());
-                })
-                .toList();
+                        
+                        // Filter by baths
+                        if (criteria.getMinBaths() != null && 
+                            (property.getBaths() == null || property.getBaths() < criteria.getMinBaths())) {
+                            return false;
+                        }
+                        
+                        // Filter by area range
+                        if (criteria.getMinArea() != null && 
+                            (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMinArea()) < 0)) {
+                            return false;
+                        }
+                        if (criteria.getMaxArea() != null && 
+                            (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMaxArea()) > 0)) {
+                            return false;
+                        }
+                        
+                        // Filter by featured
+                        return criteria.getFeatured() == null || 
+                               property.getIsFeatured() != null && property.getIsFeatured().equals(criteria.getFeatured());
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error calling property-service", e);
+            return List.of();
+        }
     }
 
     /**
      * Search properties with pagination
      */
-    public Page<Property> searchProperties(SearchCriteria criteria, Pageable pageable) {
+    public Page<PropertyDto> searchProperties(SearchCriteria criteria, Pageable pageable) {
         log.debug("Searching properties with criteria: {} and pagination: {}", criteria, pageable);
         
-        // For now, we'll return all results without pagination
-        // In a real implementation, you'd want to implement pagination at the repository level
-        return Page.empty(pageable);
+        List<PropertyDto> properties = searchProperties(criteria);
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), properties.size());
+        List<PropertyDto> pageContent = start < properties.size() ? 
+                properties.subList(start, Math.min(end, properties.size())) : List.of();
+        return new PageImpl<>(pageContent, pageable, properties.size());
     }
 
     /**
      * Search properties by text
      */
-    public List<Property> searchPropertiesByText(String searchTerm) {
+    public List<PropertyDto> searchPropertiesByText(String searchTerm) {
         log.debug("Searching properties by text: {}", searchTerm);
         
-        return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
-                .filter(property -> {
-                    String lowerSearchTerm = searchTerm.toLowerCase();
-                    return property.getTitle().toLowerCase().contains(lowerSearchTerm) ||
-                           property.getDescription().toLowerCase().contains(lowerSearchTerm);
-                })
-                .toList();
+        try {
+            List<PropertyDto> properties = propertyServiceClient.searchProperties(searchTerm, null, null, null);
+            log.info("Property-service returned {} properties for search: '{}'", properties != null ? properties.size() : 0, searchTerm);
+            return properties != null ? properties : List.of();
+        } catch (Exception e) {
+            log.error("Error calling property-service for text search. Is Property Service running on port 8083?", e);
+            return List.of();
+        }
     }
 
     /**
      * Get featured properties - cached for performance
      */
     @Cacheable("featuredProperties")
-    public List<Property> getFeaturedProperties() {
-        log.debug("Getting featured properties");
-        return propertyRepository.findByFeaturedTrueAndStatus(PropertyStatus.ACTIVE);
+    public List<PropertyDto> getFeaturedProperties() {
+        log.debug("Getting featured properties from property-service");
+        try {
+            List<PropertyDto> properties = propertyServiceClient.getFeaturedProperties();
+            log.info("Property-service returned {} featured properties", properties != null ? properties.size() : 0);
+            if (properties == null || properties.isEmpty()) {
+                log.warn("Property-service returned empty list. Check if Property Service on port 8083 has data.");
+            }
+            return properties != null ? properties : List.of();
+        } catch (Exception e) {
+            log.error("Error calling property-service for featured properties. Is Property Service running on port 8083?", e);
+            return List.of();
+        }
     }
 
 
-    public List<Property> getPropertiesByCityName(String cityName) {
+    public List<PropertyDto> getPropertiesByCityName(String cityName) {
         log.debug("Getting properties by city name: {}", cityName);
         
-        return cityService.findCityByNameIgnoreCase(cityName)
-                .map(city -> propertyRepository.findByCityIdAndStatus(city.getId(), PropertyStatus.ACTIVE))
-                .orElse(List.of());
+        try {
+            return cityService.findCityByNameIgnoreCase(cityName)
+                    .map(city -> propertyServiceClient.getPropertiesByCity(city.getId()))
+                    .orElse(List.of());
+        } catch (Exception e) {
+            log.error("Error calling property-service for city properties", e);
+            return List.of();
+        }
     }
 
 
-    public List<Property> getPropertiesByPropertyTypeName(String propertyTypeName) {
+    public List<PropertyDto> getPropertiesByPropertyTypeName(String propertyTypeName) {
         log.debug("Getting properties by property type name: {}", propertyTypeName);
         
-        return propertyTypeService.findPropertyTypeByNameIgnoreCase(propertyTypeName)
-                .map(type -> propertyRepository.findByPropertyTypeIdAndStatus(type.getId(), PropertyStatus.ACTIVE))
-                .orElse(List.of());
+        try {
+            return propertyTypeService.findPropertyTypeByNameIgnoreCase(propertyTypeName)
+                    .map(type -> propertyServiceClient.getAllProperties(null, null, type.getId(), null))
+                    .orElse(List.of());
+        } catch (Exception e) {
+            log.error("Error calling property-service for property type properties", e);
+            return List.of();
+        }
     }
 
 
-    public List<Property> getPropertiesByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+    public List<PropertyDto> getPropertiesByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
         log.debug("Getting properties by price range: {} - {}", minPrice, maxPrice);
         
-        return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
-                .filter(property -> {
-                    if (minPrice != null && property.getPrice().compareTo(minPrice) < 0) return false;
-                    if (maxPrice != null && property.getPrice().compareTo(maxPrice) > 0) return false;
-                    return true;
-                })
-                .toList();
+        try {
+            Double maxPriceDouble = maxPrice != null ? maxPrice.doubleValue() : null;
+            List<PropertyDto> properties = propertyServiceClient.getAllProperties(null, null, null, maxPriceDouble);
+            
+            if (minPrice != null) {
+                return properties.stream()
+                        .filter(p -> p.getPrice() != null && p.getPrice().compareTo(minPrice) >= 0)
+                        .collect(Collectors.toList());
+            }
+            return properties;
+        } catch (Exception e) {
+            log.error("Error calling property-service for price range", e);
+            return List.of();
+        }
     }
 
 
-    public List<Property> getPropertiesByBeds(Integer beds) {
+    public List<PropertyDto> getPropertiesByBeds(Integer beds) {
         log.debug("Getting properties by beds: {}", beds);
-        
-        return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
-                .filter(property -> property.getBeds() >= beds)
-                .toList();
+        return propertyUtilityService.getAllProperties().stream()
+                .filter(p -> p.getBeds() != null && p.getBeds() >= beds)
+                .collect(Collectors.toList());
     }
 
 
-    public List<Property> getPropertiesByBaths(Integer baths) {
+    public List<PropertyDto> getPropertiesByBaths(Integer baths) {
         log.debug("Getting properties by baths: {}", baths);
-        
-        return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
-                .filter(property -> property.getBaths() >= baths)
-                .toList();
+        return propertyUtilityService.getAllProperties().stream()
+                .filter(p -> p.getBaths() != null && p.getBaths() >= baths)
+                .collect(Collectors.toList());
     }
 
 
-    public List<Property> getPropertiesByAreaRange(BigDecimal minArea, BigDecimal maxArea) {
+    public List<PropertyDto> getPropertiesByAreaRange(BigDecimal minArea, BigDecimal maxArea) {
         log.debug("Getting properties by area range: {} - {}", minArea, maxArea);
-        
-        return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
+        return propertyUtilityService.getAllProperties().stream()
                 .filter(property -> {
-                    if (minArea != null && property.getAreaSqm().compareTo(minArea) < 0) return false;
-                    if (maxArea != null && property.getAreaSqm().compareTo(maxArea) > 0) return false;
+                    if (minArea != null && (property.getAreaSqm() == null || property.getAreaSqm().compareTo(minArea) < 0)) return false;
+                    if (maxArea != null && (property.getAreaSqm() == null || property.getAreaSqm().compareTo(maxArea) > 0)) return false;
                     return true;
                 })
-                .toList();
+                .collect(Collectors.toList());
     }
 
 
-    public List<Property> getPropertiesNearLocation(BigDecimal latitude, BigDecimal longitude, Double radiusKm) {
+    public List<PropertyDto> getPropertiesNearLocation(BigDecimal latitude, BigDecimal longitude, Double radiusKm) {
         log.debug("Getting properties near location: {}, {} within {} km", latitude, longitude, radiusKm);
-        // For now, return all properties with coordinates - implement distance calculation in service layer
-        return propertyRepository.findByStatus(PropertyStatus.ACTIVE).stream()
-                .filter(p -> p.getLatitude() != null && p.getLongitude() != null)
-                .toList();
+        // Note: Property-service doesn't have location-based search yet, returning empty for now
+        return List.of();
     }
 
 
@@ -197,7 +242,7 @@ public class SearchService {
     }
 
 
-    @org.springframework.cache.annotation.Cacheable(value = "propertyTypes", key = "'names'")
+    @Cacheable(value = "propertyTypes", key = "'names'")
     public List<String> getAvailablePropertyTypes() {
         log.debug("Getting available property types for search");
         return propertyTypeService.findAllPropertyTypes().stream()

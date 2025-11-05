@@ -213,21 +213,21 @@
                                             <td>
                                                 <strong th:text="${property.title}">Property Title</strong>
                                                 <br>
-                                                <small class="text-muted" th:text="${property.city.name}">City</small>
+                                                <small class="text-muted" th:text="${property.cityName != null ? property.cityName : 'N/A'}">City</small>
                                             </td>
                                             <td>
                                                 <span class="text-primary fw-bold" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€0</span>
                                             </td>
                                             <td>
                                                 <span class="badge" 
-                                                      th:classappend="${property.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
-                                                      th:text="${property.status.name()}">Status</span>
+                                                      th:classappend="${property.status != null and property.status == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
+                                                      th:text="${property.status != null ? property.status : 'DRAFT'}">Status</span>
                                             </td>
                                             <td>
-                                                <span th:if="${property.featured}" class="badge bg-warning">
+                                                <span th:if="${property.isFeatured != null and property.isFeatured}" class="badge bg-warning">
                                                     <i class="fas fa-star me-1"></i>Featured
                                                 </span>
-                                                <span th:unless="${property.featured}" class="text-muted">-</span>
+                                                <span th:unless="${property.isFeatured != null and property.isFeatured}" class="text-muted">-</span>
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
@@ -317,6 +317,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <form id="deleteForm" method="post" style="display: inline;">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                         <button type="submit" class="btn btn-danger">Delete Property</button>
                     </form>
                 </div>

@@ -1,7 +1,6 @@
 package app.config;
 
 import app.service.AgentService;
-import app.service.PropertyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 /**
  * Configuration class for scheduled jobs.
- * Implements both cron-based and fixed-rate scheduling as required.
+ * Implements both cron-based and fixed-rate scheduling.
  */
 @Configuration
 @EnableScheduling
@@ -18,43 +17,32 @@ import org.springframework.scheduling.annotation.Scheduled;
 @Slf4j
 public class SchedulingConfig {
 
-    private final PropertyService propertyService;
     private final AgentService agentService;
 
     /**
      * Scheduled job with cron expression.
      * Runs daily at 2:00 AM to clean up old/draft properties.
-     * Cron format: second minute hour day month weekday
-     * "0 0 2 * * ?" = Every day at 2:00 AM
+     * NOTE: Properties are now managed in property-service microservice.
+     * This scheduled job is disabled. Cleanup should be handled by property-service.
      */
-    @Scheduled(cron = "0 0 2 * * ?")
+    // @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupOldProperties() {
-        log.info("Starting scheduled job: Cleaning up old draft properties");
-        try {
-            // Find properties that are DRAFT status and older than 30 days
-            // and mark them as INACTIVE or delete them
-            int cleanedCount = propertyService.cleanupOldDraftProperties();
-            log.info("Scheduled cleanup completed: {} old draft properties processed", cleanedCount);
-        } catch (Exception e) {
-            log.error("Error during scheduled property cleanup", e);
-        }
+        log.info("Property cleanup scheduled job disabled - properties are now managed in property-service");
+        // Properties are managed in property-service microservice
+        // Cleanup should be handled there
     }
 
     /**
      * Scheduled job with fixed rate (non-cron trigger).
      * Runs every hour (3600000 milliseconds) to update property statistics.
-     * This is a non-cron trigger using fixedRate.
+     * NOTE: Properties are now managed in property-service microservice.
+     * This scheduled job is disabled. Statistics should be handled by property-service.
      */
-    @Scheduled(fixedRate = 3600000) // Every hour
+    // @Scheduled(fixedRate = 3600000) // Every hour
     public void updatePropertyStatistics() {
-        log.info("Starting scheduled job: Updating property statistics");
-        try {
-            // Update cached statistics for properties
-            propertyService.updatePropertyStatistics();
-            log.info("Scheduled statistics update completed successfully");
-        } catch (Exception e) {
-            log.error("Error during scheduled statistics update", e);
-        }
+        log.info("Property statistics scheduled job disabled - properties are now managed in property-service");
+        // Properties are managed in property-service microservice
+        // Statistics should be handled there
     }
 
     /**

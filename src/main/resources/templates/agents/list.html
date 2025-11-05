@@ -100,7 +100,7 @@
             </div>
         </div>
     </section>
-    cities
+
     <!-- Agents with Properties -->
     <section class="section">
         <div class="container">
@@ -178,6 +178,12 @@
                                             <a th:href="@{/agents/detail(id=${agent.id})}" class="btn btn-outline-primary btn-sm w-100 mb-2">
                                                 <i class="fas fa-eye me-2"></i>View Profile
                                             </a>
+                                            <!-- Show "Add Your Property" button ONLY if current user is viewing their own profile -->
+                                            <a th:if="${currentAgentId != null and #strings.toString(currentAgentId) == #strings.toString(agent.id)}" 
+                                               th:href="@{/agent/properties/add}" 
+                                               class="btn btn-primary btn-sm w-100">
+                                                <i class="fas fa-plus me-2"></i>Add Your Property
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -188,66 +194,38 @@
                                         <div class="d-flex justify-content-between align-items-center mb-4">
                                             <h5 class="mb-0 fw-bold">
                                                 <i class="fas fa-home me-2 text-primary"></i>Properties
-                                                <span class="badge bg-primary ms-2 px-3 py-2" th:text="${agent.properties != null ? agent.properties.size() : 0}">0</span>
+                                                <span class="badge bg-primary ms-2 px-3 py-2" th:text="${agent.totalListings != null ? agent.totalListings : 0}">0</span>
                                             </h5>
                                         </div>
                                         
-                                        <div th:if="${agent.properties != null and !agent.properties.empty}" class="row g-3">
-                                            <div class="col-md-6 col-lg-4" th:each="property : ${agent.properties}">
-                                                <div class="card property-mini-card h-100 transition-all">
-                                                    <div class="property-mini-image-wrapper position-relative">
-                                                        <img th:src="${property.getPrimaryImageUrl()}" 
-                                                             class="property-mini-image" 
-                                                             alt="Property Image">
-                                                        <div class="property-mini-overlay">
-                                                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-light btn-sm">
-                                                                <i class="fas fa-eye me-1"></i>Quick View
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <div class="property-price text-primary fw-bold mb-2" th:text="'€' + ${#numbers.formatDecimal(property.price, 0, 0)}">€150,000</div>
-                                                        <h6 class="property-title mb-2 fw-semibold" th:text="${property.title}">Property Title</h6>
-                                                        <div class="property-location text-muted small mb-2" th:if="${property.city != null}">
-                                                            <i class="fas fa-map-marker-alt me-1"></i>
-                                                            <span th:text="${property.city.name}">City</span>
-                                                        </div>
-                                                        <div class="property-features mb-3 d-flex flex-wrap gap-1">
-                                                            <span class="badge bg-light text-dark" th:if="${property.beds != null and property.beds > 0}">
-                                                                <i class="fas fa-bed me-1"></i><span th:text="${property.beds}">2</span>
-                                                            </span>
-                                                            <span class="badge bg-light text-dark" th:if="${property.baths != null and property.baths > 0}">
-                                                                <i class="fas fa-bath me-1"></i><span th:text="${property.baths}">1</span>
-                                                            </span>
-                                                            <span class="badge bg-light text-dark" th:if="${property.areaSqm != null}">
-                                                                <i class="fas fa-ruler-combined me-1"></i><span th:text="${#numbers.formatDecimal(property.areaSqm, 0, 0)}">85</span>m²
-                                                            </span>
-                                                        </div>
-                                                        <div class="property-status mb-3 d-flex gap-1">
-                                                            <span class="badge" 
-                                                                  th:classappend="${property.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
-                                                                  th:text="${property.status.name()}">ACTIVE</span>
-                                                            <span th:if="${property.featured}" class="badge bg-warning">
-                                                                <i class="fas fa-star me-1"></i>Featured
-                                                            </span>
-                                                        </div>
-                                                        <div class="property-actions">
-                                                            <a th:href="@{/properties/detail(id=${property.id})}" class="btn btn-outline-primary btn-sm w-100">
-                                                                <i class="fas fa-arrow-right me-2"></i>View Details
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <!-- Note: Properties are managed in Property Service -->
+                                        <div th:if="${agent.totalListings != null and agent.totalListings > 0}" class="text-center py-4">
+                                            <i class="fas fa-home fa-3x text-primary mb-3"></i>
+                                            <h6 class="text-primary">This agent has <span th:text="${agent.totalListings}">0</span> property listings</h6>
+                                            <p class="text-muted small mb-3">Properties are managed by the Property Service. View properties on the agent's detail page.</p>
+                                            <div class="d-flex gap-2 justify-content-center">
+                                                <a th:href="@{/agents/detail(id=${agent.id})}" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-eye me-1"></i>View Agent Profile
+                                                </a>
+                                                <!-- Show "Add Property" button ONLY if current user is viewing their own profile -->
+                                                <a th:if="${currentAgentId != null and #strings.toString(currentAgentId) == #strings.toString(agent.id)}" 
+                                                   th:href="@{/agent/properties/add}" 
+                                                   class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-plus me-1"></i>Add Property
+                                                </a>
                                             </div>
                                         </div>
                                         
-                                        <div th:if="${agent.properties == null or agent.properties.empty}" class="text-center py-4">
+                                        <div th:if="${agent.totalListings == null or agent.totalListings == 0}" class="text-center py-4">
                                             <i class="fas fa-home fa-3x text-muted mb-3"></i>
                                             <h6 class="text-muted">No Properties Listed</h6>
-                                            <p class="text-muted small">This agent hasn't listed any properties yet.</p>
-                                            <a th:href="@{/agent/properties/add}" class="btn btn-outline-primary btn-sm">
-                                                <i class="fas fa-plus me-1"></i>Add Your Property
-                                            </a>
+                                            <p class="text-muted small mb-3">This agent hasn't listed any properties yet.</p>
+                                            <!-- Show "Add Your Property" button ONLY if current user is viewing their own profile -->
+                                            <div th:if="${currentAgentId != null and #strings.toString(currentAgentId) == #strings.toString(agent.id)}">
+                                                <a th:href="@{/agent/properties/add}" class="btn btn-primary">
+                                                    <i class="fas fa-plus me-2"></i>Add Your Property
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -1,14 +1,14 @@
 package app.exception;
 
-/**
- * Exception thrown when an agent is not found
- */
+import java.util.UUID;
+
+
 public class AgentNotFoundException extends ApplicationException {
     public AgentNotFoundException(String message) {
         super(message);
     }
 
-    public AgentNotFoundException(java.util.UUID id) {
+    public AgentNotFoundException(UUID id) {
         super("Agent not found with ID: " + id);
     }
 }

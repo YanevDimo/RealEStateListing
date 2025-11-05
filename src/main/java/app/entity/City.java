@@ -8,7 +8,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -21,7 +20,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = "properties")
+@ToString
 public class City {
 
     @Id
@@ -47,8 +46,6 @@ public class City {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Relationships
-    @OneToMany(mappedBy = "city", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Property> properties;
-
+    // Note: Properties are now managed in property-service microservice
+    // Properties are referenced via UUID (cityId) in property-service
 }

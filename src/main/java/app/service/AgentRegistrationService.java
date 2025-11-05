@@ -1,8 +1,12 @@
 package app.service;
 
+import app.client.PropertyServiceClient;
 import app.dto.AgentRegistrationDto;
+import app.dto.PropertyCreateDto;
 import app.dto.PropertyDto;
-import app.entity.*;
+import app.entity.Agent;
+import app.entity.User;
+import app.entity.UserRole;
 import app.exception.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -21,7 +26,7 @@ public class AgentRegistrationService {
 
     private final UserService userService;
     private final AgentService agentService;
-    private final PropertyService propertyService;
+    private final PropertyServiceClient propertyServiceClient;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
     private final PasswordEncoder passwordEncoder;
@@ -75,55 +80,84 @@ public class AgentRegistrationService {
     }
 
     /**
-     * Create a property for an agent
+     * Create a property for an agent via property-service
      */
-    public Property createPropertyForAgent(UUID agentId, PropertyDto propertyDto) {
-        log.info("Creating property for agent: {}", agentId);
+    public PropertyDto createPropertyForAgent(UUID agentId, PropertyDto propertyDto) {
+        log.info("Creating property for agent: {} via property-service", agentId);
 
-        // Get agent
-        Agent agent = agentService.findAgentById(agentId)
+        // Validate agent exists
+        agentService.findAgentById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
 
-        // Get property type
-        PropertyType propertyType = propertyTypeService.findPropertyTypeById(propertyDto.getPropertyTypeId())
+        // Validate property type exists
+        propertyTypeService.findPropertyTypeById(propertyDto.getPropertyTypeId())
                 .orElseThrow(() -> new PropertyTypeNotFoundException(propertyDto.getPropertyTypeId()));
 
-        // Get city
-        City city = cityService.findCityById(propertyDto.getCityId())
+        // Validate city exists
+        cityService.findCityById(propertyDto.getCityId())
                 .orElseThrow(() -> new CityNotFoundException(propertyDto.getCityId()));
 
-        // Create property
-        Property property = Property.builder()
+        // Convert PropertyDto to PropertyCreateDto for property-service
+        PropertyCreateDto createDto = PropertyCreateDto.builder()
                 .title(propertyDto.getTitle())
                 .description(propertyDto.getDescription())
-                .propertyType(propertyType)
-                .city(city)
-                .address(propertyDto.getAddress())
                 .price(propertyDto.getPrice())
-                .beds(propertyDto.getBeds() != null ? propertyDto.getBeds() : 0)
-                .baths(propertyDto.getBaths() != null ? propertyDto.getBaths() : 0)
-                .areaSqm(propertyDto.getAreaSqm())
-                .yearBuilt(propertyDto.getYearBuilt())
-                .agent(agent)  // Link to agent
-                .latitude(propertyDto.getLatitude())
-                .longitude(propertyDto.getLongitude())
-                .status(PropertyStatus.ACTIVE)
-                .featured(propertyDto.getFeatured() != null ? propertyDto.getFeatured() : false)
+                .agentId(agentId)
+                .cityId(propertyDto.getCityId())
+                .propertyTypeId(propertyDto.getPropertyTypeId())
+                .status(propertyDto.getStatus() != null ? propertyDto.getStatus() : "DRAFT")
+                .bedrooms(propertyDto.getBedrooms() != null ? propertyDto.getBedrooms() : 
+                         (propertyDto.getBeds() != null ? propertyDto.getBeds() : 0))
+                .bathrooms(propertyDto.getBathrooms() != null ? propertyDto.getBathrooms() : 
+                          (propertyDto.getBaths() != null ? propertyDto.getBaths() : 0))
+                .squareFeet(propertyDto.getSquareFeet() != null ? propertyDto.getSquareFeet() : 
+                           (propertyDto.getAreaSqm() != null ? propertyDto.getAreaSqm().intValue() : null))
+                .address(propertyDto.getAddress())
+                .features(propertyDto.getFeatures())
+                .imageUrls(propertyDto.getImageUrls()) // Include image URLs from uploaded images
                 .build();
 
-        // Save property
-        Property savedProperty = propertyService.saveProperty(property);
-
-        // Update agent's listing count
-        agentService.incrementAgentListings(agentId);
-
-        log.info("Property created with ID: {} for agent: {}", savedProperty.getId(), agentId);
-
-        return savedProperty;
+        // Create property via property-service
+        log.info("Sending property creation request to Property Service with DTO: {}", createDto);
+        log.info("Image URLs being sent: {}", createDto.getImageUrls());
+        if (createDto.getImageUrls() == null || createDto.getImageUrls().isEmpty()) {
+            log.warn("⚠️ No image URLs in PropertyCreateDto! PropertyDto had: {}", propertyDto.getImageUrls());
+        } else {
+            log.info("✅ Sending {} image URLs to property-service", createDto.getImageUrls().size());
+        }
+        try {
+            PropertyDto savedProperty = propertyServiceClient.createProperty(createDto);
+            
+            if (savedProperty == null) {
+                log.error("Property Service returned null. Property may not have been created.");
+                throw new RuntimeException("Property Service failed to create property. Received null response.");
+            }
+            
+            if (savedProperty.getId() == null) {
+                log.error("Property Service returned property without ID. Property creation failed.");
+                throw new RuntimeException("Property Service returned property without ID. Property may not have been saved.");
+            }
+            
+            log.info("Property created successfully via Property Service with ID: {} for agent: {}", 
+                    savedProperty.getId(), agentId);
+            
+            // Update agent's listing count (increment by 1)
+            agentService.incrementAgentListings(agentId);
+            
+            return savedProperty;
+        } catch (Exception e) {
+            // Handle Feign Client exceptions and other errors
+            String errorMessage = "Failed to create property in Property Service";
+            if (e.getMessage() != null) {
+                errorMessage += ": " + e.getMessage();
+            }
+            log.error("Error calling Property Service to create property: {}", errorMessage, e);
+            throw new RuntimeException(errorMessage, e);
+        }
     }
 
     /**
-     * Get agent with their properties
+     * Get agent with their properties from property-service
      */
     public Agent getAgentWithProperties(UUID agentId) {
         log.debug("Getting agent with properties for ID: {}", agentId);
@@ -131,11 +165,9 @@ public class AgentRegistrationService {
         Agent agent = agentService.findAgentById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
 
-        // Load properties (this will trigger lazy loading)
-        if (agent.getProperties() != null) {
-            agent.getProperties().size(); // Force lazy loading
-        }
-
+        // Properties are now managed in property-service, so we don't load them here
+        // If needed, properties can be fetched via propertyServiceClient.getPropertiesByAgent(agentId)
+        
         return agent;
     }
 
@@ -188,10 +220,7 @@ public class AgentRegistrationService {
         Agent agentWithUser = agentService.findAgentById(savedAgent.getId())
                 .orElseThrow(() -> new AgentNotFoundException(savedAgent.getId()));
 
-        // Force lazy loading of properties
-        if (agentWithUser.getProperties() != null) {
-            agentWithUser.getProperties().size(); // Force lazy loading
-        }
+        // Properties are now managed in property-service, no need to load them here
 
         return agentWithUser;
     }
@@ -236,6 +265,8 @@ public class AgentRegistrationService {
 
     /**
      * Delete agent and all their properties
+     * Note: Properties are managed in property-service, 
+     * so property deletion should be handled there or via API calls
      */
     public void deleteAgentAndProperties(UUID agentId) {
         log.info("Deleting agent and properties for ID: {}", agentId);
@@ -243,11 +274,16 @@ public class AgentRegistrationService {
         Agent agent = agentService.findAgentById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
 
-        // Delete all agent's properties
-        if (agent.getProperties() != null) {
-            for (Property property : agent.getProperties()) {
-                propertyService.deleteProperty(property.getId());
-            }
+        // Get all properties for this agent from property-service
+        try {
+            List<PropertyDto> properties = propertyServiceClient.getPropertiesByAgent(agentId);
+            log.warn("Agent {} has {} properties in property-service. " +
+                    "These should be deleted via property-service API.", 
+                    agentId, properties.size());
+            // Note: Property deletion should be handled by property-service
+            // or via direct API calls to property-service delete endpoints
+        } catch (Exception e) {
+            log.error("Error fetching properties for agent {} from property-service", agentId, e);
         }
 
         // Delete agent profile
@@ -256,7 +292,7 @@ public class AgentRegistrationService {
         // Delete user account
         userService.deleteUser(agent.getUser().getId());
 
-        log.info("Agent and all properties deleted for ID: {}", agentId);
+        log.info("Agent deleted for ID: {}. Note: Properties in property-service may need separate cleanup.", agentId);
     }
 
     /**

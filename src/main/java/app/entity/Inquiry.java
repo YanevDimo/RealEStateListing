@@ -18,16 +18,15 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = {"property", "user"})
+@ToString(exclude = {"user"})
 public class Inquiry {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "property_id", nullable = false)
-    private Property property;
+    @Column(name = "property_id", nullable = false)
+    private UUID propertyId; // Reference to property in property-service
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

@@ -54,6 +54,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(matcher -> matcher
+                // REST API endpoints (for microservice communication)
+                .requestMatchers("/api/v1/**").permitAll()
                 // Public endpoints  
                 .requestMatchers("/", "/properties", "/properties/**", "/about", "/contact").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/uploads/**", "/styles.css").permitAll()

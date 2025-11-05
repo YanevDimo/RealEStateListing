@@ -1,13 +1,17 @@
 package app.controller;
 
+import app.client.PropertyServiceClient;
+import app.dto.PropertyDto;
 import app.entity.Agent;
-import app.entity.Property;
-import app.entity.PropertyImage;
+import app.entity.City;
+import app.entity.User;
 import app.service.AgentService;
-import app.service.PropertyService;
+import app.service.CityService;
 import app.service.SearchService;
+import app.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,6 +19,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Controller
@@ -22,9 +27,11 @@ import java.util.UUID;
 @Slf4j
 public class HomeController {
 
-    private final PropertyService propertyService;
+    private final PropertyServiceClient propertyServiceClient;
     private final AgentService agentService;
     private final SearchService searchService;
+    private final UserService userService;
+    private final CityService cityService;
 
     @GetMapping("/")
     public ModelAndView home() {
@@ -56,13 +63,13 @@ public class HomeController {
         
         ModelAndView modelAndView = new ModelAndView("properties/list");
         try {
-            List<Property> properties;
+            List<PropertyDto> properties;
             
             if (search != null && !search.trim().isEmpty()) {
-                // Text search
+                // Text search via property-service
                 properties = searchService.searchPropertiesByText(search.trim());
             } else {
-                // Advanced search
+                // Advanced search via property-service
                 SearchService.SearchCriteria criteria = new SearchService.SearchCriteria();
                 criteria.setCityName(city);
                 criteria.setPropertyTypeName(type);
@@ -76,20 +83,18 @@ public class HomeController {
                 properties = searchService.searchProperties(criteria);
             }
             
-            // Load images and agent information for each property
-            for (Property property : properties) {
-
-                List<PropertyImage>images = property.getImages();
-                
-                // Agent information is already loaded via the relationship
-                // but we can ensure it's properly fetched
-                if (property.getAgent() != null && property.getAgent().getUser() != null) {
-                    // Agent and user information should be available
-                    log.debug("Property {} has agent: {}", property.getTitle(), property.getAgent().getAgentName());
-                }
+            log.info("Found {} properties to display", properties != null ? properties.size() : 0);
+            if (properties == null || properties.isEmpty()) {
+                log.warn("No properties found. Check if Property Service (port 8083) has data in its database.");
+                modelAndView.addObject("warningMessage", "No properties found. Property Service may be empty.");
             }
             
-            modelAndView.addObject("properties", properties);
+            // Enrich properties with city and agent data for template display
+            if (properties != null && !properties.isEmpty()) {
+                properties = enrichPropertiesWithNames(properties);
+            }
+            
+            modelAndView.addObject("properties", properties != null ? properties : List.of());
             modelAndView.addObject("search", search);
             modelAndView.addObject("selectedCity", city);
             modelAndView.addObject("selectedType", type);
@@ -97,7 +102,8 @@ public class HomeController {
             modelAndView.addObject("propertyTypes", searchService.getAvailablePropertyTypes());
             modelAndView.addObject("cities", searchService.getAvailableCities());
         } catch (Exception e) {
-            log.error("Error loading properties", e);
+            log.error("Error loading properties from property-service", e);
+            modelAndView.addObject("errorMessage", "Error loading properties. Is Property Service running on port 8083?");
             modelAndView.addObject("properties", List.of());
             modelAndView.addObject("propertyTypes", List.of());
             modelAndView.addObject("cities", List.of());
@@ -112,16 +118,19 @@ public class HomeController {
         ModelAndView modelAndView = new ModelAndView("properties/detail");
         try {
             UUID propertyId = UUID.fromString(id);
-            propertyService.findPropertyById(propertyId)
-                    .ifPresentOrElse(
-                            property -> modelAndView.addObject("property", property),
-                            () -> modelAndView.addObject("error", "Property not found")
-                    );
+            PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
+            if (property != null) {
+                // Enrich property with city and agent information
+                PropertyDto enrichedProperty = enrichPropertyWithNames(property);
+                modelAndView.addObject("property", enrichedProperty);
+            } else {
+                modelAndView.addObject("error", "Property not found");
+            }
         } catch (IllegalArgumentException e) {
             log.error("Invalid property ID format: {}", id, e);
             modelAndView.addObject("error", "Invalid property ID");
         } catch (Exception e) {
-            log.error("Error loading property detail", e);
+            log.error("Error loading property detail from property-service", e);
             modelAndView.addObject("error", "Error loading property");
         }
         return modelAndView;
@@ -136,7 +145,7 @@ public class HomeController {
     }
 
     @GetMapping("/agents")
-    public ModelAndView agents() {
+    public ModelAndView agents(Authentication authentication) {
         log.debug("Loading agents page - using ModelAndView");
         ModelAndView modelAndView = new ModelAndView("agents/list");
         
@@ -145,6 +154,25 @@ public class HomeController {
             log.debug("About to call agentService.findAllAgents()");
             List<Agent> agents = agentService.findAllAgents();
             log.info("Found {} agents in database", agents != null ? agents.size() : 0);
+            
+            // Check if current user is an agent and pass as String for Thymeleaf comparison
+            String currentAgentIdString = null;
+            if (authentication != null && authentication.isAuthenticated()) {
+                try {
+                    String email = authentication.getName();
+                    Optional<User> user = userService.findUserByEmail(email);
+                    if (user.isPresent()) {
+                        Optional<Agent> agent = agentService.findAgentByUserId(user.get().getId());
+                        if (agent.isPresent()) {
+                            currentAgentIdString = agent.get().getId().toString();
+                            log.debug("Current logged-in agent ID: {}", currentAgentIdString);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Current user is not an agent or error getting agent: {}", e.getMessage());
+                }
+            }
+            modelAndView.addObject("currentAgentId", currentAgentIdString);
             
             if (agents == null || agents.isEmpty()) {
                 log.info("No agents found in database");
@@ -170,12 +198,8 @@ public class HomeController {
                         .orElse(0.0);
                 modelAndView.addObject("averageExperience", Math.round(avgExperience * 10.0) / 10.0);
                 
-                // Set empty properties for now
-                for (Agent agent : agents) {
-                    if (agent != null) {
-                        agent.setProperties(List.of());
-                    }
-                }
+                // Note: Agent properties are loaded separately on agent detail page
+                // Properties are managed by Property Service microservice
             }
             
             log.info("Agents page loaded successfully with ModelAndView");
@@ -201,7 +225,13 @@ public class HomeController {
                     .ifPresentOrElse(
                             agent -> {
                                 modelAndView.addObject("agent", agent);
-                                modelAndView.addObject("agentProperties", propertyService.findPropertiesByAgent(agentId));
+                                try {
+                                    List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agentId);
+                                    modelAndView.addObject("agentProperties", agentProperties);
+                                } catch (Exception e) {
+                                    log.error("Error loading agent properties from property-service", e);
+                                    modelAndView.addObject("agentProperties", List.of());
+                                }
                             },
                             () -> modelAndView.addObject("error", "Agent not found")
                     );
@@ -223,7 +253,9 @@ public class HomeController {
         try {
             // Add some statistics for the about page
             long totalAgents = agentService.countAllAgents();
-            long totalProperties = propertyService.countAllProperties();
+            // Note: Property count would need to come from property-service
+            // For now, using a placeholder or making an API call if needed
+            long totalProperties = 0; // TODO: Call property-service for count
             
             modelAndView.addObject("totalAgents", totalAgents);
             modelAndView.addObject("totalProperties", totalProperties);
@@ -244,6 +276,55 @@ public class HomeController {
     public ModelAndView contact() {
         return new ModelAndView("contact");
     }
-
-
+    
+    /**
+     * Enrich PropertyDto objects with city and agent names for template display
+     */
+    private List<PropertyDto> enrichPropertiesWithNames(List<PropertyDto> properties) {
+        log.debug("Enriching {} properties with city and agent information", properties.size());
+        return properties.stream().map(this::enrichPropertyWithNames).toList();
+    }
+    
+    /**
+     * Enrich a single PropertyDto with city and agent names for template display
+     */
+    private PropertyDto enrichPropertyWithNames(PropertyDto property) {
+        try {
+            // Add city name
+            if (property.getCityId() != null) {
+                Optional<City> cityOpt = cityService.findCityById(property.getCityId());
+                if (cityOpt.isPresent()) {
+                    City city = cityOpt.get();
+                    property.setCityName(city.getName());
+                    log.trace("Enriched property {} with city name: {}", property.getId(), city.getName());
+                } else {
+                    log.warn("City not found for property {} with cityId: {}", property.getId(), property.getCityId());
+                }
+            } else {
+                log.debug("Property {} has no cityId", property.getId());
+            }
+            
+            // Add agent information
+            if (property.getAgentId() != null) {
+                Optional<Agent> agentOpt = agentService.findAgentById(property.getAgentId());
+                if (agentOpt.isPresent()) {
+                    Agent agent = agentOpt.get();
+                    property.setAgentName(agent.getAgentName());
+                    property.setAgentEmail(agent.getAgentEmail());
+                    property.setAgentProfilePictureUrl(agent.getProfilePictureUrl());
+                    property.setAgentRating(agent.getRating());
+                    property.setAgentTotalListings(agent.getTotalListings());
+                    log.trace("Enriched property {} with agent: {} ({})", property.getId(), agent.getAgentName(), agent.getId());
+                } else {
+                    log.warn("Agent not found for property {} with agentId: {}. Agent may not exist in main app database.", 
+                            property.getId(), property.getAgentId());
+                }
+            } else {
+                log.debug("Property {} has no agentId", property.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error enriching property {}: {}", property.getId(), e.getMessage(), e);
+        }
+        return property;
+    }
 }
