@@ -79,16 +79,16 @@
             </div>
 
             <!-- Welcome Section -->
-            <div class="row mb-4">
+            <div class="row mb-4" th:if="${agent != null}">
                 <div class="col-12">
                     <div class="card border-0 shadow-lg">
                         <div class="card-body p-4">
                             <div class="row align-items-center">
                                 <div class="col-md-8">
                                     <h2 class="text-primary mb-2">
-                                        <i class="fas fa-user-tie me-2"></i>Welcome, <span th:text="${agent.user.name}">Agent Name</span>!
+                                        <i class="fas fa-user-tie me-2"></i>Welcome, <span th:text="${agent.user != null ? agent.user.name : agent.getAgentName()}">Agent Name</span>!
                                     </h2>
-                                    <p class="text-muted mb-0" th:text="${agent.bio}">Your professional bio will appear here</p>
+                                    <p class="text-muted mb-0" th:text="${agent.bio != null ? agent.bio : 'Your professional bio will appear here'}">Your professional bio will appear here</p>
                                 </div>
                                 <div class="col-md-4 text-md-end">
                                     <div class="d-flex gap-2 justify-content-md-end">
@@ -107,14 +107,14 @@
             </div>
 
             <!-- Statistics Cards -->
-            <div class="row g-4 mb-5">
+            <div class="row g-4 mb-5" th:if="${agent != null}">
                 <div class="col-lg-3 col-md-6">
                     <div class="stats-card">
                         <div class="stats-icon">
                             <i class="fas fa-home text-primary"></i>
                         </div>
                         <div class="stats-content">
-                            <div class="stats-number" th:text="${totalProperties}">0</div>
+                            <div class="stats-number" th:text="${totalProperties != null ? totalProperties : 0}">0</div>
                             <div class="stats-label">Total Properties</div>
                         </div>
                     </div>
@@ -125,7 +125,7 @@
                             <i class="fas fa-check-circle text-success"></i>
                         </div>
                         <div class="stats-content">
-                            <div class="stats-number" th:text="${activeProperties}">0</div>
+                            <div class="stats-number" th:text="${activeProperties != null ? activeProperties : 0}">0</div>
                             <div class="stats-label">Active Properties</div>
                         </div>
                     </div>
@@ -136,7 +136,7 @@
                             <i class="fas fa-star text-warning"></i>
                         </div>
                         <div class="stats-content">
-                            <div class="stats-number" th:text="${#numbers.formatDecimal(agent.rating, 1, 1)}">0.0</div>
+                            <div class="stats-number" th:text="${agent.rating != null ? #numbers.formatDecimal(agent.rating, 1, 1) : '0.0'}">0.0</div>
                             <div class="stats-label">Average Rating</div>
                         </div>
                     </div>
@@ -147,7 +147,7 @@
                             <i class="fas fa-calendar-alt text-info"></i>
                         </div>
                         <div class="stats-content">
-                            <div class="stats-number" th:text="${agent.experienceYears}">0</div>
+                            <div class="stats-number" th:text="${agent.experienceYears != null ? agent.experienceYears : 0}">0</div>
                             <div class="stats-label">Years Experience</div>
                         </div>
                     </div>
@@ -155,7 +155,7 @@
             </div>
 
             <!-- Agent Information -->
-            <div class="row g-4 mb-5">
+            <div class="row g-4 mb-5" th:if="${agent != null}">
                 <div class="col-lg-4">
                     <div class="card border-0 shadow-lg">
                         <div class="card-header bg-primary text-white">
@@ -166,23 +166,23 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <strong>License Number:</strong>
-                                <span th:text="${agent.licenseNumber}" class="text-muted">N/A</span>
+                                <span th:text="${agent.licenseNumber != null ? agent.licenseNumber : 'N/A'}" class="text-muted">N/A</span>
                             </div>
                             <div class="mb-3">
                                 <strong>Email:</strong>
-                                <span th:text="${agent.user.email}" class="text-muted">N/A</span>
+                                <span th:text="${agent.user != null ? agent.user.email : (agent.getAgentEmail() != null ? agent.getAgentEmail() : 'N/A')}" class="text-muted">N/A</span>
                             </div>
                             <div class="mb-3">
                                 <strong>Phone:</strong>
-                                <span th:text="${agent.user.phone}" class="text-muted">N/A</span>
+                                <span th:text="${agent.user != null ? agent.user.phone : (agent.getAgentPhone() != null ? agent.getAgentPhone() : 'N/A')}" class="text-muted">N/A</span>
                             </div>
                             <div class="mb-3">
                                 <strong>Specializations:</strong>
-                                <span th:text="${agent.getSpecializationsAsString()}" class="text-muted">N/A</span>
+                                <span th:text="${agent.getSpecializationsAsString() != null and !agent.getSpecializationsAsString().isEmpty() ? agent.getSpecializationsAsString() : 'N/A'}" class="text-muted">N/A</span>
                             </div>
                             <div class="mb-3">
                                 <strong>Total Listings:</strong>
-                                <span th:text="${agent.totalListings}" class="text-primary fw-bold">0</span>
+                                <span th:text="${agent.totalListings != null ? agent.totalListings : 0}" class="text-primary fw-bold">0</span>
                             </div>
                         </div>
                     </div>
@@ -286,13 +286,13 @@
                                     </a>
                                 </div>
                                 <div class="col-md-3">
-                                    <a href="/properties" class="btn btn-outline-secondary w-100">
-                                        <i class="fas fa-search me-2"></i>Browse Properties
+                                    <a href="/agent/inquiries" class="btn btn-outline-info w-100">
+                                        <i class="fas fa-envelope me-2"></i>My Inquiries
                                     </a>
                                 </div>
                                 <div class="col-md-3">
-                                    <a href="/agents" class="btn btn-outline-info w-100">
-                                        <i class="fas fa-users me-2"></i>View Agents
+                                    <a href="/properties" class="btn btn-outline-secondary w-100">
+                                        <i class="fas fa-search me-2"></i>Browse Properties
                                     </a>
                                 </div>
                             </div>

@@ -5,18 +5,26 @@ import app.dto.PropertyDto;
 import app.entity.Agent;
 import app.entity.City;
 import app.entity.User;
+import app.dto.InquiryDto;
 import app.service.AgentService;
 import app.service.CityService;
+import app.service.InquiryService;
 import app.service.PropertyUtilityService;
 import app.service.SearchService;
 import app.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,6 +42,7 @@ public class HomeController {
     private final UserService userService;
     private final CityService cityService;
     private final PropertyUtilityService propertyUtilityService;
+    private final InquiryService inquiryService;
 
     @GetMapping("/")
     public ModelAndView home() {
@@ -125,6 +134,7 @@ public class HomeController {
                 // Enrich property with city and agent information
                 PropertyDto enrichedProperty = enrichPropertyWithNames(property);
                 modelAndView.addObject("property", enrichedProperty);
+                modelAndView.addObject("inquiryDto", new InquiryDto());
             } else {
                 modelAndView.addObject("error", "Property not found");
             }
@@ -136,6 +146,56 @@ public class HomeController {
             modelAndView.addObject("error", "Error loading property");
         }
         return modelAndView;
+    }
+
+    @PostMapping("/properties/{id}/inquiry")
+    public ModelAndView submitInquiry(@PathVariable String id,
+                                     @Valid @ModelAttribute InquiryDto inquiryDto,
+                                     BindingResult bindingResult,
+                                     Authentication authentication,
+                                     RedirectAttributes redirectAttributes) {
+        log.info("Processing inquiry submission for property: {}", id);
+        
+        try {
+            UUID propertyId = UUID.fromString(id);
+            
+            // Verify property exists
+            PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
+            if (property == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Property not found");
+                return new ModelAndView("redirect:/properties");
+            }
+            
+            if (bindingResult.hasErrors()) {
+                log.warn("Inquiry validation errors for property: {}", id);
+                ModelAndView modelAndView = new ModelAndView("properties/detail");
+                PropertyDto enrichedProperty = enrichPropertyWithNames(property);
+                modelAndView.addObject("property", enrichedProperty);
+                modelAndView.addObject("inquiryDto", inquiryDto);
+                return modelAndView;
+            }
+            
+            // Set property ID in DTO
+            inquiryDto.setPropertyId(propertyId);
+            
+            // Create inquiry
+            inquiryService.createInquiry(inquiryDto, propertyId, authentication);
+            log.info("Inquiry created successfully for property: {}", id);
+            
+            redirectAttributes.addFlashAttribute("successMessage", 
+                    "Thank you! Your inquiry has been submitted successfully. We'll contact you soon.");
+            return new ModelAndView("redirect:/properties/detail?id=" + id);
+            
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid property ID format: {}", id, e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Invalid property ID");
+            return new ModelAndView("redirect:/properties");
+        } catch (Exception e) {
+            log.error("Error creating inquiry for property: {}", id, e);
+            redirectAttributes.addFlashAttribute("errorMessage", 
+                    "Failed to submit inquiry. Please try again.");
+            return new ModelAndView("redirect:/properties/detail?id=" + id);
+        }
     }
 
     @GetMapping("/test-agents")

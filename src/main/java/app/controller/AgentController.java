@@ -3,9 +3,12 @@ package app.controller;
 
 import app.client.PropertyServiceClient;
 import app.dto.AgentRegistrationDto;
+import app.dto.InquiryUpdateDto;
 import app.dto.PropertyDto;
 import app.dto.PropertyUpdateDto;
 import app.entity.Agent;
+import app.entity.Inquiry;
+import app.entity.InquiryStatus;
 import app.entity.User;
 import app.exception.*;
 import app.service.*;
@@ -36,6 +39,7 @@ public class AgentController {
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
     private final FileUploadService fileUploadService;
+    private final InquiryService inquiryService;
 
     /**
      * Show agent registration form
@@ -499,6 +503,143 @@ public class AgentController {
         } catch (Exception e) {
             log.warn("Error parsing specializations JSON: {}", specializationsJson, e);
             return specializationsJson; // Return as-is if parsing fails
+        }
+    }
+
+    /**
+     * Show inquiries for agent's properties
+     */
+    @GetMapping("/inquiries")
+    public ModelAndView showInquiries(Authentication authentication) {
+        log.debug("Showing inquiries for agent");
+        ModelAndView modelAndView = new ModelAndView("agent/inquiries");
+
+        try {
+            // Get current agent
+            String email = authentication.getName();
+            User user = userService.findUserByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+            Agent agent = agentService.findAgentByUserId(user.getId())
+                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+
+            // Get agent's properties
+            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            List<UUID> propertyIds = agentProperties.stream()
+                    .map(PropertyDto::getId)
+                    .toList();
+
+            // Get inquiries for agent's properties
+            List<Inquiry> inquiries = inquiryService.findInquiriesByPropertyIds(propertyIds);
+
+            // Enrich inquiries with property information
+            modelAndView.addObject("inquiries", inquiries);
+            modelAndView.addObject("properties", agentProperties);
+            modelAndView.addObject("statuses", InquiryStatus.values());
+            modelAndView.addObject("totalInquiries", inquiries.size());
+            modelAndView.addObject("newInquiries", inquiries.stream()
+                    .filter(i -> i.getStatus() == InquiryStatus.NEW)
+                    .count());
+
+        } catch (Exception e) {
+            log.error("Error loading inquiries", e);
+            modelAndView.addObject("error", "Error loading inquiries: " + e.getMessage());
+        }
+
+        return modelAndView;
+    }
+
+    /**
+     * Show inquiry detail
+     */
+    @GetMapping("/inquiries/{id}")
+    public ModelAndView showInquiryDetail(@PathVariable UUID id, Authentication authentication) {
+        log.debug("Showing inquiry detail: {}", id);
+        ModelAndView modelAndView = new ModelAndView("agent/inquiry-detail");
+
+        try {
+            // Get current agent
+            String email = authentication.getName();
+            User user = userService.findUserByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+            Agent agent = agentService.findAgentByUserId(user.getId())
+                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+
+            // Get inquiry
+            Inquiry inquiry = inquiryService.findInquiryById(id)
+                    .orElseThrow(() -> new RuntimeException("Inquiry not found"));
+
+            // Verify inquiry belongs to agent's property
+            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            boolean belongsToAgent = agentProperties.stream()
+                    .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
+
+            if (!belongsToAgent) {
+                modelAndView.addObject("error", "You don't have permission to view this inquiry");
+                return modelAndView;
+            }
+
+            // Get property details
+            PropertyDto property = propertyServiceClient.getPropertyById(inquiry.getPropertyId());
+
+            modelAndView.addObject("inquiry", inquiry);
+            modelAndView.addObject("property", property);
+            modelAndView.addObject("statuses", InquiryStatus.values());
+            modelAndView.addObject("inquiryUpdateDto", InquiryUpdateDto.builder().build());
+
+        } catch (Exception e) {
+            log.error("Error loading inquiry detail", e);
+            modelAndView.addObject("error", "Error loading inquiry: " + e.getMessage());
+        }
+
+        return modelAndView;
+    }
+
+    /**
+     * Update inquiry status and response
+     */
+    @PostMapping("/inquiries/{id}/update")
+    public String updateInquiry(@PathVariable UUID id,
+                                @ModelAttribute InquiryUpdateDto updateDto,
+                                Authentication authentication,
+                                RedirectAttributes redirectAttributes) {
+        log.info("Updating inquiry: {}", id);
+
+        try {
+            // Get current agent
+            String email = authentication.getName();
+            User user = userService.findUserByEmail(email)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+            Agent agent = agentService.findAgentByUserId(user.getId())
+                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+
+            // Get inquiry
+            Inquiry inquiry = inquiryService.findInquiryById(id)
+                    .orElseThrow(() -> new RuntimeException("Inquiry not found"));
+
+            // Verify inquiry belongs to agent's property
+            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            boolean belongsToAgent = agentProperties.stream()
+                    .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
+
+            if (!belongsToAgent) {
+                redirectAttributes.addFlashAttribute("errorMessage", "You don't have permission to update this inquiry");
+                return "redirect:/agent/inquiries";
+            }
+
+            // Update inquiry
+            inquiryService.updateInquiry(id, updateDto.getStatus(), updateDto.getResponse());
+            log.info("Inquiry updated successfully: {}", id);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Inquiry updated successfully");
+            return "redirect:/agent/inquiries/" + id;
+
+        } catch (Exception e) {
+            log.error("Error updating inquiry: {}", id, e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to update inquiry: " + e.getMessage());
+            return "redirect:/agent/inquiries/" + id;
         }
     }
 }

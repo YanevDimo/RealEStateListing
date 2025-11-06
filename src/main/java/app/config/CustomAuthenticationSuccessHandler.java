@@ -31,8 +31,8 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             log.debug("User has role: {}", role);
             
             if ("ROLE_ADMIN".equals(role)) {
-                log.debug("Redirecting ADMIN to agent dashboard");
-                response.sendRedirect("/agent/dashboard");
+                log.debug("Redirecting ADMIN to admin dashboard");
+                response.sendRedirect("/admin/dashboard");
                 return;
             } else if ("ROLE_AGENT".equals(role)) {
                 log.debug("Redirecting AGENT to dashboard");
