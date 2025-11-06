@@ -326,6 +326,40 @@ public class AgentService {
         return agentRepository.save(agent);
     }
 
+    /**
+     * Sync agent total listings count from property-service.
+     * Updates each agent's totalListings to match actual property count in microservice.
+     * Called by scheduled cron job.
+     */
+    @Transactional
+    public int syncAgentListingsFromPropertyService() {
+        log.debug("Syncing agent listings from property-service");
+        List<Agent> agents = agentRepository.findAll();
+        int updatedCount = 0;
+        
+        for (Agent agent : agents) {
+            try {
+                // Get actual property count from property-service
+                long actualCount = countActivePropertiesByAgent(agent.getId());
+                
+                // Update if different
+                Integer oldCount = agent.getTotalListings();
+                if (oldCount == null || oldCount != actualCount) {
+                    agent.setTotalListings((int) actualCount);
+                    agentRepository.save(agent);
+                    updatedCount++;
+                    log.debug("Updated listings for agent {}: {} -> {}", 
+                            agent.getId(), oldCount, actualCount);
+                }
+            } catch (Exception e) {
+                log.error("Error syncing listings for agent {}: {}", agent.getId(), e.getMessage());
+            }
+        }
+        
+        log.info("Synced listings for {} agents from property-service", updatedCount);
+        return updatedCount;
+    }
+
 
     public AgentStatistics getAgentStatistics() {
         log.debug("Getting agent statistics");

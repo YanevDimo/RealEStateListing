@@ -7,6 +7,7 @@ import app.entity.City;
 import app.entity.User;
 import app.service.AgentService;
 import app.service.CityService;
+import app.service.PropertyUtilityService;
 import app.service.SearchService;
 import app.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class HomeController {
     private final SearchService searchService;
     private final UserService userService;
     private final CityService cityService;
+    private final PropertyUtilityService propertyUtilityService;
 
     @GetMapping("/")
     public ModelAndView home() {
@@ -253,9 +255,8 @@ public class HomeController {
         try {
             // Add some statistics for the about page
             long totalAgents = agentService.countAllAgents();
-            // Note: Property count would need to come from property-service
-            // For now, using a placeholder or making an API call if needed
-            long totalProperties = 0; // TODO: Call property-service for count
+            // Get property count from property-service
+            long totalProperties = propertyUtilityService.getAllProperties().size();
             
             modelAndView.addObject("totalAgents", totalAgents);
             modelAndView.addObject("totalProperties", totalProperties);
