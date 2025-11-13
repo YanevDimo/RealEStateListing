@@ -125,35 +125,25 @@ public class AgentRegistrationService {
         } else {
             log.info("✅ Sending {} image URLs to property-service", createDto.getImageUrls().size());
         }
-        try {
-            PropertyDto savedProperty = propertyServiceClient.createProperty(createDto);
-            
-            if (savedProperty == null) {
-                log.error("Property Service returned null. Property may not have been created.");
-                throw new RuntimeException("Property Service failed to create property. Received null response.");
-            }
-            
-            if (savedProperty.getId() == null) {
-                log.error("Property Service returned property without ID. Property creation failed.");
-                throw new RuntimeException("Property Service returned property without ID. Property may not have been saved.");
-            }
-            
-            log.info("Property created successfully via Property Service with ID: {} for agent: {}", 
-                    savedProperty.getId(), agentId);
-            
-            // Update agent's listing count (increment by 1)
-            agentService.incrementAgentListings(agentId);
-            
-            return savedProperty;
-        } catch (Exception e) {
-            // Handle Feign Client exceptions and other errors
-            String errorMessage = "Failed to create property in Property Service";
-            if (e.getMessage() != null) {
-                errorMessage += ": " + e.getMessage();
-            }
-            log.error("Error calling Property Service to create property: {}", errorMessage, e);
-            throw new RuntimeException(errorMessage, e);
+        PropertyDto savedProperty = propertyServiceClient.createProperty(createDto);
+        
+        if (savedProperty == null) {
+            log.error("Property Service returned null. Property may not have been created.");
+            throw new ApplicationException("Property Service failed to create property. Received null response.");
         }
+        
+        if (savedProperty.getId() == null) {
+            log.error("Property Service returned property without ID. Property creation failed.");
+            throw new ApplicationException("Property Service returned property without ID. Property may not have been saved.");
+        }
+        
+        log.info("Property created successfully via Property Service with ID: {} for agent: {}", 
+                savedProperty.getId(), agentId);
+        
+        // Update agent's listing count (increment by 1)
+        agentService.incrementAgentListings(agentId);
+        
+        return savedProperty;
     }
 
     /**

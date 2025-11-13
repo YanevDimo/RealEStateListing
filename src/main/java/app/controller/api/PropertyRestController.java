@@ -29,61 +29,36 @@ public class PropertyRestController {
             @RequestParam(required = false) UUID propertyTypeId,
             @RequestParam(required = false) Double maxPrice) {
         
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getAllProperties(
-                    search, cityId, propertyTypeId, maxPrice);
-            return ResponseEntity.ok(properties);
-        } catch (Exception e) {
-            log.error("Error calling property-service for getAllProperties", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        List<PropertyDto> properties = propertyServiceClient.getAllProperties(
+                search, cityId, propertyTypeId, maxPrice);
+        return ResponseEntity.ok(properties);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PropertyDto> getPropertyById(@PathVariable UUID id) {
-        try {
-            PropertyDto property = propertyServiceClient.getPropertyById(id);
-            if (property == null) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.ok(property);
-        } catch (Exception e) {
-            log.error("Error calling property-service for getPropertyById: {}", id, e);
-            return ResponseEntity.internalServerError().build();
+        PropertyDto property = propertyServiceClient.getPropertyById(id);
+        if (property == null) {
+            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(property);
     }
 
     @GetMapping("/featured")
     public ResponseEntity<List<PropertyDto>> getFeaturedProperties() {
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getFeaturedProperties();
-            return ResponseEntity.ok(properties);
-        } catch (Exception e) {
-            log.error("Error calling property-service for getFeaturedProperties", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        List<PropertyDto> properties = propertyServiceClient.getFeaturedProperties();
+        return ResponseEntity.ok(properties);
     }
 
     @GetMapping("/agent/{agentId}")
     public ResponseEntity<List<PropertyDto>> getPropertiesByAgent(@PathVariable UUID agentId) {
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getPropertiesByAgent(agentId);
-            return ResponseEntity.ok(properties);
-        } catch (Exception e) {
-            log.error("Error calling property-service for getPropertiesByAgent: {}", agentId, e);
-            return ResponseEntity.internalServerError().build();
-        }
+        List<PropertyDto> properties = propertyServiceClient.getPropertiesByAgent(agentId);
+        return ResponseEntity.ok(properties);
     }
 
     @GetMapping("/city/{cityId}")
     public ResponseEntity<List<PropertyDto>> getPropertiesByCity(@PathVariable UUID cityId) {
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getPropertiesByCity(cityId);
-            return ResponseEntity.ok(properties);
-        } catch (Exception e) {
-            log.error("Error calling property-service for getPropertiesByCity: {}", cityId, e);
-            return ResponseEntity.internalServerError().build();
-        }
+        List<PropertyDto> properties = propertyServiceClient.getPropertiesByCity(cityId);
+        return ResponseEntity.ok(properties);
     }
 
     @GetMapping("/search")
@@ -92,25 +67,15 @@ public class PropertyRestController {
             @RequestParam(required = false) UUID cityId,
             @RequestParam(required = false) UUID propertyTypeId,
             @RequestParam(required = false) Double maxPrice) {
-        try {
-            List<PropertyDto> properties = propertyServiceClient.searchProperties(
-                    search, cityId, propertyTypeId, maxPrice);
-            return ResponseEntity.ok(properties);
-        } catch (Exception e) {
-            log.error("Error calling property-service for searchProperties", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        List<PropertyDto> properties = propertyServiceClient.searchProperties(
+                search, cityId, propertyTypeId, maxPrice);
+        return ResponseEntity.ok(properties);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProperty(@PathVariable UUID id) {
-        try {
-            propertyServiceClient.deleteProperty(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            log.error("Error calling property-service for deleteProperty: {}", id, e);
-            return ResponseEntity.internalServerError().build();
-        }
+        propertyServiceClient.deleteProperty(id);
+        return ResponseEntity.noContent().build();
     }
     
     // Note: Create, Update, and Toggle Featured operations 

@@ -12,6 +12,7 @@ import app.entity.InquiryStatus;
 import app.entity.User;
 import app.exception.*;
 import app.service.*;
+import feign.FeignException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -121,7 +122,15 @@ public class AgentController {
                     .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
 
             // Get agent's properties from property-service
-            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            List<PropertyDto> agentProperties;
+            try {
+                agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            } catch (FeignException e) {
+                log.warn("Property Service unavailable, loading dashboard without properties: {}", e.getMessage());
+                agentProperties = new ArrayList<>(); // Empty list as fallback
+                modelAndView.addObject("serviceWarning", 
+                    "Property Service is currently unavailable. Properties cannot be displayed at this time.");
+            }
 
             // Get statistics
             long totalProperties = agentProperties.size();
@@ -136,9 +145,12 @@ public class AgentController {
             modelAndView.addObject("totalListings", agent.getTotalListings());
             modelAndView.addObject("rating", agent.getRating());
 
-        } catch (Exception e) {
-            log.error("Error loading agent dashboard", e);
+        } catch (ApplicationException e) {
+            log.error("Error loading agent dashboard: {}", e.getMessage(), e);
             modelAndView.addObject("error", "Error loading dashboard: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error loading agent dashboard", e);
+            modelAndView.addObject("error", "An unexpected error occurred while loading the dashboard.");
         }
 
         return modelAndView;
@@ -226,7 +238,7 @@ public class AgentController {
                 
                 if (property == null || property.getId() == null) {
                     log.error("Property creation returned null or property without ID");
-                    throw new RuntimeException("Property Service failed to create property. Received null or invalid response.");
+                    throw new ApplicationException("Property Service failed to create property. Received null or invalid response.");
                 }
                 
                 log.info("Property created successfully via Property Service with ID: {} and {} images", 
@@ -235,18 +247,54 @@ public class AgentController {
                 redirectAttributes.addFlashAttribute("successMessage", 
                         "Property added successfully! Property ID: " + property.getId());
                 return new ModelAndView("redirect:/agent/dashboard");
+            } catch (FeignException e) {
+                // Re-throw FeignException to be handled by outer catch block (no duplicate logging)
+                throw e;
+            } catch (ApplicationException e) {
+                // Re-throw ApplicationException to be handled by outer catch block
+                throw e;
             } catch (Exception e) {
-                log.error("Error creating property via Property Service: {}", e.getMessage(), e);
+                log.error("Unexpected error creating property via Property Service: {}", e.getMessage(), e);
                 throw e; // Re-throw to be caught by outer catch block
             }
 
-        } catch (Exception e) {
-            log.error("Error adding property", e);
+        } catch (FeignException e) {
+            // Log connection issues at WARN level (infrastructure issue, not application error)
+            if (e instanceof feign.RetryableException) {
+                log.warn("Property Service unavailable (connection refused). User cannot add property. Service URL: http://localhost:8083");
+            } else {
+                log.error("Property Service communication error: {}", e.getMessage(), e);
+            }
+            
+            ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
+            errorModelAndView.addObject("propertyDto", propertyDto);
+            errorModelAndView.addObject("cities", cityService.findAllCities());
+            errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
+            
+            // Provide user-friendly error message based on exception type
+            String errorMessage;
+            if (e instanceof feign.RetryableException) {
+                errorMessage = "Property Service is currently unavailable. Please ensure the property service is running on port 8083 and try again.";
+            } else {
+                errorMessage = "Failed to communicate with Property Service. Please try again later.";
+            }
+            errorModelAndView.addObject("errorMessage", errorMessage);
+            return errorModelAndView;
+        } catch (ApplicationException e) {
+            log.error("Error adding property: {}", e.getMessage(), e);
             ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
             errorModelAndView.addObject("propertyDto", propertyDto);
             errorModelAndView.addObject("cities", cityService.findAllCities());
             errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
             errorModelAndView.addObject("errorMessage", "Failed to add property: " + e.getMessage());
+            return errorModelAndView;
+        } catch (Exception e) {
+            log.error("Unexpected error adding property: {}", e.getMessage(), e);
+            ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
+            errorModelAndView.addObject("propertyDto", propertyDto);
+            errorModelAndView.addObject("cities", cityService.findAllCities());
+            errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
+            errorModelAndView.addObject("errorMessage", "An unexpected error occurred while adding the property. Please try again.");
             return errorModelAndView;
         }
     }

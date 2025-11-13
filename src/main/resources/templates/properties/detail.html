@@ -44,13 +44,7 @@
     <section class="py-5">
         <div class="container">
             <!-- Breadcrumb -->
-            <nav aria-label="breadcrumb" class="mb-4">
-                <!-- <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="/">Home</a></li>
-                    <li class="breadcrumb-item"><a href="/properties">Properties</a></li>
-                    <li class="breadcrumb-item active" th:text="${property != null ? property.title : 'Property'}">Property Title</li>
-                </ol> -->
-            </nav>
+            <nav aria-label="breadcrumb" class="mb-4"></nav>
 
             <div th:if="${property == null or error != null}" class="alert alert-danger">
                 <h4>Property Not Found</h4>
