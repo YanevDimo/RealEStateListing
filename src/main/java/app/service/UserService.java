@@ -127,9 +127,9 @@ public class UserService {
 
 
     @Transactional
-    public User updateUser(User user) {
+    public void updateUser(User user) {
         log.debug("Updating user: {}", user.getEmail());
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
 
@@ -141,29 +141,29 @@ public class UserService {
 
 
     @Transactional
-    public User activateUser(UUID id) {
+    public void activateUser(UUID id) {
         log.debug("Activating user: {}", id);
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
         user.setIsActive(true);
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
 
     @Transactional
-    public User deactivateUser(UUID id) {
+    public void deactivateUser(UUID id) {
         log.debug("Deactivating user: {}", id);
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
         user.setIsActive(false);
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
 
     @Transactional
-    public User changeUserRole(UUID id, UserRole role) {
+    public void changeUserRole(UUID id, UserRole role) {
         log.debug("Changing user role: {} to {}", id, role);
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
         user.setRole(role);
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
 
@@ -230,7 +230,6 @@ public class UserService {
             this.totalAdmins = totalAdmins;
         }
 
-        // Getters
         public long getTotalUsers() { return totalUsers; }
         public long getActiveUsers() { return activeUsers; }
         public long getTotalAgents() { return totalAgents; }

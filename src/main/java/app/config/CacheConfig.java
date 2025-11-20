@@ -24,7 +24,8 @@ public class CacheConfig {
             "cities",           // Cache for city listings
             "propertyTypes",    // Cache for property types
             "featuredProperties", // Cache for featured properties
-            "statistics"        // Cache for statistics
+            "statistics",       // Cache for statistics
+            "allProperties"     // Cache for all properties from property-service
         );
     }
 }

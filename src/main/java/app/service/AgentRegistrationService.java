@@ -4,6 +4,7 @@ import app.client.PropertyServiceClient;
 import app.dto.AgentRegistrationDto;
 import app.dto.PropertyCreateDto;
 import app.dto.PropertyDto;
+import app.dto.PropertyUpdateDto;
 import app.entity.Agent;
 import app.entity.User;
 import app.entity.UserRole;
@@ -29,6 +30,7 @@ public class AgentRegistrationService {
     private final PropertyServiceClient propertyServiceClient;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
+    private final PropertyUtilityService propertyUtilityService;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -140,6 +142,9 @@ public class AgentRegistrationService {
         log.info("Property created successfully via Property Service with ID: {} for agent: {}", 
                 savedProperty.getId(), agentId);
         
+        // Evict allProperties cache to reflect the new property
+        propertyUtilityService.evictAllPropertiesCache();
+        
         // Update agent's listing count (increment by 1)
         agentService.incrementAgentListings(agentId);
         
@@ -159,6 +164,30 @@ public class AgentRegistrationService {
         // If needed, properties can be fetched via propertyServiceClient.getPropertiesByAgent(agentId)
         
         return agent;
+    }
+
+    /**
+     * Build PropertyUpdateDto from PropertyDto with fallback logic.
+     * Handles conversions and default values.
+     */
+    public PropertyUpdateDto buildPropertyUpdateDto(PropertyDto propertyDto, PropertyDto existingProperty) {
+        return PropertyUpdateDto.builder()
+                .title(propertyDto.getTitle())
+                .description(propertyDto.getDescription())
+                .price(propertyDto.getPrice())
+                .agentId(existingProperty.getAgentId()) // Keep same agent
+                .cityId(propertyDto.getCityId())
+                .propertyTypeId(propertyDto.getPropertyTypeId())
+                .status(propertyDto.getStatus() != null ? propertyDto.getStatus() : existingProperty.getStatus())
+                .bedrooms(propertyDto.getBedrooms() != null ? propertyDto.getBedrooms() :
+                         (propertyDto.getBeds() != null ? propertyDto.getBeds() : existingProperty.getBedrooms()))
+                .bathrooms(propertyDto.getBathrooms() != null ? propertyDto.getBathrooms() :
+                          (propertyDto.getBaths() != null ? propertyDto.getBaths() : existingProperty.getBathrooms()))
+                .squareFeet(propertyDto.getSquareFeet() != null ? propertyDto.getSquareFeet() :
+                           (propertyDto.getAreaSqm() != null ? propertyDto.getAreaSqm().intValue() : existingProperty.getSquareFeet()))
+                .address(propertyDto.getAddress())
+                .features(propertyDto.getFeatures())
+                .build();
     }
 
     /**
@@ -234,14 +263,17 @@ public class AgentRegistrationService {
         if (updateDto.getSpecializations() != null) {
             agent.setSpecializations(formatSpecializationsAsJson(updateDto.getSpecializations()));
         }
+        if (updateDto.getLicenseNumber() != null && !updateDto.getLicenseNumber().trim().isEmpty()) {
+            agent.setLicenseNumber(updateDto.getLicenseNumber());
+        }
 
         // Update user fields
         User user = agent.getUser();
-        if (updateDto.getName() != null) {
+        if (updateDto.getName() != null && !updateDto.getName().trim().isEmpty()) {
             user.setName(updateDto.getName());
         }
         if (updateDto.getPhone() != null) {
-            user.setPhone(updateDto.getPhone());
+            user.setPhone(updateDto.getPhone().trim().isEmpty() ? null : updateDto.getPhone());
         }
 
         // Save updates

@@ -2,13 +2,10 @@ package app.controller;
 
 import app.client.PropertyServiceClient;
 import app.dto.PropertyDto;
-import app.entity.Agent;
-import app.entity.City;
-import app.entity.User;
 import app.dto.InquiryDto;
 import app.service.AgentService;
-import app.service.CityService;
 import app.service.InquiryService;
+import app.service.PropertyEnrichmentService;
 import app.service.PropertyUtilityService;
 import app.service.SearchService;
 import app.service.UserService;
@@ -26,7 +23,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.math.BigDecimal;
+import app.entity.Agent;
+import app.entity.User;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,8 +39,8 @@ public class HomeController {
     private final AgentService agentService;
     private final SearchService searchService;
     private final UserService userService;
-    private final CityService cityService;
     private final PropertyUtilityService propertyUtilityService;
+    private final PropertyEnrichmentService propertyEnrichmentService;
     private final InquiryService inquiryService;
 
     @GetMapping("/")
@@ -78,20 +77,20 @@ public class HomeController {
             
             if (search != null && !search.trim().isEmpty()) {
                 // Text search via property-service
+                log.debug("Using text search for: {}", search);
                 properties = searchService.searchPropertiesByText(search.trim());
-            } else {
-                // Advanced search via property-service
-                SearchService.SearchCriteria criteria = new SearchService.SearchCriteria();
-                criteria.setCityName(city);
-                criteria.setPropertyTypeName(type);
-                if (maxPrice != null && !maxPrice.trim().isEmpty()) {
-                    try {
-                        criteria.setMaxPrice(new BigDecimal(maxPrice));
-                    } catch (NumberFormatException e) {
-                        log.warn("Invalid maxPrice format: {}", maxPrice);
-                    }
-                }
+            } else if ((city != null && !city.trim().isEmpty()) || 
+                      (type != null && !type.trim().isEmpty()) ||
+                      (maxPrice != null && !maxPrice.trim().isEmpty())) {
+                // Advanced search with filters via property-service
+                log.debug("Using advanced search with filters");
+                SearchService.SearchCriteria criteria = searchService.buildSearchCriteria(null, city, type, maxPrice);
                 properties = searchService.searchProperties(criteria);
+            } else {
+                // No filters - use getAllProperties() directly to avoid search endpoint 500 error
+                log.debug("No filters applied, using getAllProperties() directly");
+                properties = propertyUtilityService.getAllProperties();
+                log.info("Retrieved {} properties via getAllProperties()", properties != null ? properties.size() : 0);
             }
             
             log.info("Found {} properties to display", properties != null ? properties.size() : 0);
@@ -102,7 +101,13 @@ public class HomeController {
             
             // Enrich properties with city and agent data for template display
             if (properties != null && !properties.isEmpty()) {
-                properties = enrichPropertiesWithNames(properties);
+                try {
+                    properties = propertyEnrichmentService.enrichPropertiesWithNames(properties);
+                    log.debug("Enriched {} properties with city and agent names", properties.size());
+                } catch (Exception e) {
+                    log.warn("Error enriching properties, displaying without enrichment: {}", e.getMessage());
+                    // Continue with unenriched properties rather than failing
+                }
             }
             
             modelAndView.addObject("properties", properties != null ? properties : List.of());
@@ -132,7 +137,7 @@ public class HomeController {
             PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
             if (property != null) {
                 // Enrich property with city and agent information
-                PropertyDto enrichedProperty = enrichPropertyWithNames(property);
+                PropertyDto enrichedProperty = propertyEnrichmentService.enrichPropertyWithNames(property);
                 modelAndView.addObject("property", enrichedProperty);
                 modelAndView.addObject("inquiryDto", new InquiryDto());
             } else {
@@ -169,7 +174,7 @@ public class HomeController {
             if (bindingResult.hasErrors()) {
                 log.warn("Inquiry validation errors for property: {}", id);
                 ModelAndView modelAndView = new ModelAndView("properties/detail");
-                PropertyDto enrichedProperty = enrichPropertyWithNames(property);
+                PropertyDto enrichedProperty = propertyEnrichmentService.enrichPropertyWithNames(property);
                 modelAndView.addObject("property", enrichedProperty);
                 modelAndView.addObject("inquiryDto", inquiryDto);
                 return modelAndView;
@@ -244,21 +249,12 @@ public class HomeController {
                 modelAndView.addObject("averageExperience", 0.0);
             } else {
                 modelAndView.addObject("agents", agents);
-                modelAndView.addObject("totalAgents", agents.size());
                 
-                // Calculate basic statistics
-                long agentsWithProperties = agents.stream()
-                        .filter(agent -> agent != null && agent.getTotalListings() != null && agent.getTotalListings() > 0)
-                        .count();
-                modelAndView.addObject("agentsWithProperties", agentsWithProperties);
-                
-                // Calculate average experience
-                double avgExperience = agents.stream()
-                        .filter(agent -> agent != null && agent.getExperienceYears() != null)
-                        .mapToInt(Agent::getExperienceYears)
-                        .average()
-                        .orElse(0.0);
-                modelAndView.addObject("averageExperience", Math.round(avgExperience * 10.0) / 10.0);
+                // Calculate statistics using service
+                AgentService.AgentListStatistics statistics = agentService.calculateAgentListStatistics(agents);
+                modelAndView.addObject("totalAgents", statistics.getTotalAgents());
+                modelAndView.addObject("agentsWithProperties", statistics.getAgentsWithProperties());
+                modelAndView.addObject("averageExperience", statistics.getAverageExperience());
                 
                 // Note: Agent properties are loaded separately on agent detail page
                 // Properties are managed by Property Service microservice
@@ -288,7 +284,7 @@ public class HomeController {
                             agent -> {
                                 modelAndView.addObject("agent", agent);
                                 try {
-                                    List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agentId);
+                                    List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agentId);
                                     modelAndView.addObject("agentProperties", agentProperties);
                                 } catch (Exception e) {
                                     log.error("Error loading agent properties from property-service", e);
@@ -336,56 +332,5 @@ public class HomeController {
     @GetMapping("/contact")
     public ModelAndView contact() {
         return new ModelAndView("contact");
-    }
-    
-    /**
-     * Enrich PropertyDto objects with city and agent names for template display
-     */
-    private List<PropertyDto> enrichPropertiesWithNames(List<PropertyDto> properties) {
-        log.debug("Enriching {} properties with city and agent information", properties.size());
-        return properties.stream().map(this::enrichPropertyWithNames).toList();
-    }
-    
-    /**
-     * Enrich a single PropertyDto with city and agent names for template display
-     */
-    private PropertyDto enrichPropertyWithNames(PropertyDto property) {
-        try {
-            // Add city name
-            if (property.getCityId() != null) {
-                Optional<City> cityOpt = cityService.findCityById(property.getCityId());
-                if (cityOpt.isPresent()) {
-                    City city = cityOpt.get();
-                    property.setCityName(city.getName());
-                    log.trace("Enriched property {} with city name: {}", property.getId(), city.getName());
-                } else {
-                    log.warn("City not found for property {} with cityId: {}", property.getId(), property.getCityId());
-                }
-            } else {
-                log.debug("Property {} has no cityId", property.getId());
-            }
-            
-            // Add agent information
-            if (property.getAgentId() != null) {
-                Optional<Agent> agentOpt = agentService.findAgentById(property.getAgentId());
-                if (agentOpt.isPresent()) {
-                    Agent agent = agentOpt.get();
-                    property.setAgentName(agent.getAgentName());
-                    property.setAgentEmail(agent.getAgentEmail());
-                    property.setAgentProfilePictureUrl(agent.getProfilePictureUrl());
-                    property.setAgentRating(agent.getRating());
-                    property.setAgentTotalListings(agent.getTotalListings());
-                    log.trace("Enriched property {} with agent: {} ({})", property.getId(), agent.getAgentName(), agent.getId());
-                } else {
-                    log.warn("Agent not found for property {} with agentId: {}. Agent may not exist in main app database.", 
-                            property.getId(), property.getAgentId());
-                }
-            } else {
-                log.debug("Property {} has no agentId", property.getId());
-            }
-        } catch (Exception e) {
-            log.error("Error enriching property {}: {}", property.getId(), e.getMessage(), e);
-        }
-        return property;
     }
 }

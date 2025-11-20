@@ -1,7 +1,5 @@
 package app.service;
 
-import app.client.PropertyServiceClient;
-import app.dto.PropertyDto;
 import app.entity.City;
 import app.repository.CityRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +22,6 @@ import java.util.UUID;
 public class CityService {
 
     private final CityRepository cityRepository;
-    private final PropertyServiceClient propertyServiceClient;
     private final PropertyUtilityService propertyUtilityService;
 
 
@@ -132,10 +129,6 @@ public class CityService {
     }
 
 
-    public List<City> findCitiesWithMostProperties() {
-        log.debug("Finding cities with most properties");
-        return findCitiesOrderedByPropertyCount();
-    }
 
 
     public List<City> findCitiesNearLocation(BigDecimal latitude, BigDecimal longitude, Double radiusKm) {
@@ -163,18 +156,6 @@ public class CityService {
     }
 
 
-    public long countActivePropertiesByCity(UUID cityId) {
-        log.debug("Counting active properties by city: {}", cityId);
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getPropertiesByCity(cityId);
-            return properties.stream()
-                    .filter(p -> p.getStatus() == null || "ACTIVE".equals(p.getStatus()))
-                    .count();
-        } catch (Exception e) {
-            log.error("Error counting properties from property-service for city: {}", cityId, e);
-            return 0;
-        }
-    }
 
 
     @Transactional

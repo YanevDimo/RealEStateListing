@@ -1,7 +1,5 @@
 package app.service;
 
-import app.client.PropertyServiceClient;
-import app.dto.PropertyDto;
 import app.entity.PropertyType;
 import app.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +21,6 @@ import java.util.UUID;
 public class PropertyTypeService {
 
     private final PropertyTypeRepository propertyTypeRepository;
-    private final PropertyServiceClient propertyServiceClient;
     private final PropertyUtilityService propertyUtilityService;
 
 
@@ -94,10 +91,6 @@ public class PropertyTypeService {
     }
 
 
-    public List<PropertyType> findPropertyTypesWithMostProperties() {
-        log.debug("Finding property types with most properties");
-        return findPropertyTypesOrderedByPropertyCount();
-    }
 
 
     public List<PropertyType> findPropertyTypesWithDescription() {
@@ -133,18 +126,6 @@ public class PropertyTypeService {
     }
 
 
-    public long countActivePropertiesByPropertyType(UUID propertyTypeId) {
-        log.debug("Counting active properties by property type: {}", propertyTypeId);
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getAllProperties(null, null, propertyTypeId, null);
-            return properties.stream()
-                    .filter(p -> p.getStatus() == null || "ACTIVE".equals(p.getStatus()))
-                    .count();
-        } catch (Exception e) {
-            log.error("Error counting properties from property-service for property type: {}", propertyTypeId, e);
-            return 0;
-        }
-    }
 
 
     @Transactional

@@ -7,8 +7,10 @@ import app.dto.InquiryUpdateDto;
 import app.dto.PropertyDto;
 import app.dto.PropertyUpdateDto;
 import app.entity.Agent;
+import app.entity.City;
 import app.entity.Inquiry;
 import app.entity.InquiryStatus;
+import app.entity.PropertyType;
 import app.entity.User;
 import app.exception.*;
 import app.service.*;
@@ -25,6 +27,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Controller
@@ -37,6 +40,7 @@ public class AgentController {
     private final AgentService agentService;
     private final UserService userService;
     private final PropertyServiceClient propertyServiceClient;
+    private final PropertyUtilityService propertyUtilityService;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
     private final FileUploadService fileUploadService;
@@ -53,9 +57,7 @@ public class AgentController {
         return modelAndView;
     }
 
-    /**
-     * Process agent registration
-     */
+
     @PostMapping("/register")
     public String registerAgent(@Valid @ModelAttribute AgentRegistrationDto registrationDto,
                                BindingResult bindingResult,
@@ -103,40 +105,33 @@ public class AgentController {
         }
     }
 
-    /**
-     * Show agent dashboard
-     */
+
     @GetMapping("/dashboard")
     public ModelAndView showAgentDashboard(Authentication authentication) {
         log.debug("Showing agent dashboard");
         ModelAndView modelAndView = new ModelAndView("dashboard/agent-dashboard");
 
         try {
-            // Get current user
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
-            // Get agent profile
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
-
-            // Get agent's properties from property-service
-            List<PropertyDto> agentProperties;
+            // Get agent's properties from property-service (with fallback handling)
+            List<PropertyDto> agentProperties = new ArrayList<>(); // Initialize to empty list
             try {
-                agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
-            } catch (FeignException e) {
-                log.warn("Property Service unavailable, loading dashboard without properties: {}", e.getMessage());
+                agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
+                if (agentProperties == null || agentProperties.isEmpty()) {
+                    log.debug("No properties found for agent {}", agent.getId());
+                }
+            } catch (Exception e) {
+                log.error("Error loading agent properties from property-service: {}", e.getMessage(), e);
                 agentProperties = new ArrayList<>(); // Empty list as fallback
                 modelAndView.addObject("serviceWarning", 
-                    "Property Service is currently unavailable. Properties cannot be displayed at this time.");
+                    "Error loading properties. Please try again later.");
             }
 
             // Get statistics
             long totalProperties = agentProperties.size();
-            long activeProperties = agentProperties.stream()
-                    .filter(p -> p.getStatus() != null && p.getStatus().equals("ACTIVE"))
-                    .count();
+            long activeProperties = propertyUtilityService.filterActiveProperties(agentProperties).size();
 
             modelAndView.addObject("agent", agent);
             modelAndView.addObject("properties", agentProperties);
@@ -156,24 +151,21 @@ public class AgentController {
         return modelAndView;
     }
 
-    /**
-     * Show add property form
-     */
+
     @GetMapping("/properties/add")
     public ModelAndView showAddPropertyForm() {
         log.debug("Showing add property form");
         ModelAndView modelAndView = new ModelAndView("agent/add-property");
         
         modelAndView.addObject("propertyDto", new PropertyDto());
-        modelAndView.addObject("cities", cityService.findAllCities());
-        modelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
+        // Cities and propertyTypes are automatically added by @ModelAttribute
         
         return modelAndView;
     }
 
-    /**
-     * Process add property
-     */
+
+     // Process add property
+
     @PostMapping("/properties/add")
     public ModelAndView addProperty(@Valid @ModelAttribute PropertyDto propertyDto,
                             BindingResult bindingResult,
@@ -187,19 +179,13 @@ public class AgentController {
             log.warn("Property validation errors: {}", bindingResult.getAllErrors());
             ModelAndView modelAndView = new ModelAndView("agent/add-property");
             modelAndView.addObject("propertyDto", propertyDto);
-            modelAndView.addObject("cities", cityService.findAllCities());
-            modelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
+            // Cities and propertyTypes are automatically added by @ModelAttribute
             return modelAndView;
         }
 
         try {
-            // Get current agent
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
             // Upload images if provided
             List<String> imageUrls = new ArrayList<>();
@@ -209,12 +195,7 @@ public class AgentController {
                     log.info("Uploaded {} images for property", imageUrls.size());
                 } catch (Exception e) {
                     log.error("Error uploading images", e);
-                    ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
-                    errorModelAndView.addObject("propertyDto", propertyDto);
-                    errorModelAndView.addObject("cities", cityService.findAllCities());
-                    errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
-                    errorModelAndView.addObject("errorMessage", "Failed to upload images: " + e.getMessage());
-                    return errorModelAndView;
+                    return createAddPropertyErrorModel(propertyDto, "Failed to upload images: " + e.getMessage());
                 }
             }
 
@@ -266,11 +247,6 @@ public class AgentController {
                 log.error("Property Service communication error: {}", e.getMessage(), e);
             }
             
-            ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
-            errorModelAndView.addObject("propertyDto", propertyDto);
-            errorModelAndView.addObject("cities", cityService.findAllCities());
-            errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
-            
             // Provide user-friendly error message based on exception type
             String errorMessage;
             if (e instanceof feign.RetryableException) {
@@ -278,61 +254,35 @@ public class AgentController {
             } else {
                 errorMessage = "Failed to communicate with Property Service. Please try again later.";
             }
-            errorModelAndView.addObject("errorMessage", errorMessage);
-            return errorModelAndView;
+            return createAddPropertyErrorModel(propertyDto, errorMessage);
         } catch (ApplicationException e) {
             log.error("Error adding property: {}", e.getMessage(), e);
-            ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
-            errorModelAndView.addObject("propertyDto", propertyDto);
-            errorModelAndView.addObject("cities", cityService.findAllCities());
-            errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
-            errorModelAndView.addObject("errorMessage", "Failed to add property: " + e.getMessage());
-            return errorModelAndView;
+            return createAddPropertyErrorModel(propertyDto, "Failed to add property: " + e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error adding property: {}", e.getMessage(), e);
-            ModelAndView errorModelAndView = new ModelAndView("agent/add-property");
-            errorModelAndView.addObject("propertyDto", propertyDto);
-            errorModelAndView.addObject("cities", cityService.findAllCities());
-            errorModelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
-            errorModelAndView.addObject("errorMessage", "An unexpected error occurred while adding the property. Please try again.");
-            return errorModelAndView;
+            return createAddPropertyErrorModel(propertyDto, "An unexpected error occurred while adding the property. Please try again.");
         }
     }
 
-    /**
-     * Show edit property form
-     */
+
     @GetMapping("/properties/edit/{id}")
     public ModelAndView showEditPropertyForm(@PathVariable UUID id, Authentication authentication) {
         log.debug("Showing edit property form for ID: {}", id);
         ModelAndView modelAndView = new ModelAndView("agent/edit-property");
 
         try {
-            // Verify agent owns this property
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
-            PropertyDto property = propertyServiceClient.getPropertyById(id);
-            if (property == null) {
-                throw new PropertyNotFoundException("Property not found");
-            }
-
-            // Check if agent owns this property
-            if (!property.getAgentId().equals(agent.getId())) {
-                throw new ApplicationException("You don't have permission to edit this property");
-            }
+            // Verify agent owns this property using helper method
+            PropertyDto property = verifyPropertyOwnership(id, agent.getId(), "edit");
 
             // PropertyDto already has all the data we need
             PropertyDto propertyDto = property;
 
             modelAndView.addObject("propertyDto", propertyDto);
             modelAndView.addObject("propertyId", id);
-            modelAndView.addObject("cities", cityService.findAllCities());
-            modelAndView.addObject("propertyTypes", propertyTypeService.findAllPropertyTypes());
+            // Cities and propertyTypes are automatically added by @ModelAttribute
 
         } catch (Exception e) {
             log.error("Error loading edit property form", e);
@@ -359,45 +309,20 @@ public class AgentController {
         }
 
         try {
-            // Verify agent owns this property
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
-            PropertyDto property = propertyServiceClient.getPropertyById(id);
-            if (property == null) {
-                throw new PropertyNotFoundException("Property not found");
-            }
+            // Verify agent owns this property using helper method
+            PropertyDto property = verifyPropertyOwnership(id, agent.getId(), "edit");
 
-            // Check if agent owns this property
-            if (!property.getAgentId().equals(agent.getId())) {
-                throw new ApplicationException("You don't have permission to edit this property");
-            }
-
-            // Convert PropertyDto to PropertyUpdateDto
-            PropertyUpdateDto updateDto = PropertyUpdateDto.builder()
-                    .title(propertyDto.getTitle())
-                    .description(propertyDto.getDescription())
-                    .price(propertyDto.getPrice())
-                    .agentId(property.getAgentId()) // Keep same agent
-                    .cityId(propertyDto.getCityId())
-                    .propertyTypeId(propertyDto.getPropertyTypeId())
-                    .status(propertyDto.getStatus() != null ? propertyDto.getStatus() : property.getStatus())
-                    .bedrooms(propertyDto.getBedrooms() != null ? propertyDto.getBedrooms() : 
-                             (propertyDto.getBeds() != null ? propertyDto.getBeds() : property.getBedrooms()))
-                    .bathrooms(propertyDto.getBathrooms() != null ? propertyDto.getBathrooms() : 
-                              (propertyDto.getBaths() != null ? propertyDto.getBaths() : property.getBathrooms()))
-                    .squareFeet(propertyDto.getSquareFeet() != null ? propertyDto.getSquareFeet() : 
-                               (propertyDto.getAreaSqm() != null ? propertyDto.getAreaSqm().intValue() : property.getSquareFeet()))
-                    .address(propertyDto.getAddress())
-                    .features(propertyDto.getFeatures())
-                    .build();
+            // Convert PropertyDto to PropertyUpdateDto using service
+            PropertyUpdateDto updateDto = agentRegistrationService.buildPropertyUpdateDto(propertyDto, property);
 
             // Update property via property-service
             propertyServiceClient.updateProperty(id, updateDto);
+            
+            // Evict allProperties cache to reflect the updated property
+            propertyUtilityService.evictAllPropertiesCache();
             
             log.info("Property updated successfully with ID: {}", id);
             
@@ -423,26 +348,17 @@ public class AgentController {
         log.info("Processing delete property for ID: {}", id);
 
         try {
-            // Verify agent owns this property
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
-            PropertyDto property = propertyServiceClient.getPropertyById(id);
-            if (property == null) {
-                throw new PropertyNotFoundException("Property not found");
-            }
-
-            // Check if agent owns this property
-            if (!property.getAgentId().equals(agent.getId())) {
-                throw new ApplicationException("You don't have permission to delete this property");
-            }
+            // Verify agent owns this property using helper method
+            PropertyDto property = verifyPropertyOwnership(id, agent.getId(), "delete");
 
             // Delete property via property-service
             propertyServiceClient.deleteProperty(id);
+            
+            // Evict allProperties cache to reflect the deleted property
+            propertyUtilityService.evictAllPropertiesCache();
             
             // Decrement agent's listing count
             agentService.decrementAgentListings(agent.getId());
@@ -470,27 +386,40 @@ public class AgentController {
         ModelAndView modelAndView = new ModelAndView("agent/edit-profile");
 
         try {
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
+
+            // Get user from agent
+            User user = agent.getUser();
+            if (user == null) {
+                throw new UserNotFoundException("User not found for agent");
+            }
 
             AgentRegistrationDto profileDto = AgentRegistrationDto.builder()
-                    .name(user.getName())
-                    .email(user.getEmail())
-                    .phone(user.getPhone())
-                    .licenseNumber(agent.getLicenseNumber())
-                    .bio(agent.getBio())
-                    .experienceYears(agent.getExperienceYears())
-                    .specializations(parseSpecializationsFromJson(agent.getSpecializations()))
+                    .name(user.getName() != null ? user.getName() : "")
+                    .email(user.getEmail() != null ? user.getEmail() : "")
+                    .phone(user.getPhone() != null ? user.getPhone() : "")
+                    .licenseNumber(agent.getLicenseNumber() != null ? agent.getLicenseNumber() : "")
+                    .bio(agent.getBio() != null ? agent.getBio() : "")
+                    .experienceYears(agent.getExperienceYears() != null ? agent.getExperienceYears() : 0)
+                    .specializations(agentService.parseSpecializationsFromJson(agent.getSpecializations()))
                     .build();
 
             modelAndView.addObject("profileDto", profileDto);
 
         } catch (Exception e) {
             log.error("Error loading profile form", e);
+            // Always provide a profileDto even on error to prevent Thymeleaf parsing errors
+            AgentRegistrationDto profileDto = AgentRegistrationDto.builder()
+                    .name("")
+                    .email("")
+                    .phone("")
+                    .licenseNumber("")
+                    .bio("")
+                    .experienceYears(0)
+                    .specializations("")
+                    .build();
+            modelAndView.addObject("profileDto", profileDto);
             modelAndView.addObject("error", "Error loading profile: " + e.getMessage());
         }
 
@@ -501,24 +430,32 @@ public class AgentController {
      * Process profile update
      */
     @PostMapping("/profile/edit")
-    public String updateProfile(@Valid @ModelAttribute AgentRegistrationDto profileDto,
+    public ModelAndView updateProfile(@ModelAttribute AgentRegistrationDto profileDto,
                               BindingResult bindingResult,
                               Authentication authentication,
                               RedirectAttributes redirectAttributes) {
         log.info("Processing profile update");
 
+        // Validate only non-password fields for profile update
+        // Password fields are optional during profile update
+        if (profileDto.getName() == null || profileDto.getName().trim().isEmpty()) {
+            bindingResult.rejectValue("name", "error.name", "Name is required");
+        }
+        if (profileDto.getLicenseNumber() == null || profileDto.getLicenseNumber().trim().isEmpty()) {
+            bindingResult.rejectValue("licenseNumber", "error.licenseNumber", "License number is required");
+        }
+
         if (bindingResult.hasErrors()) {
-            log.warn("Profile validation errors");
-            return "agent/edit-profile";
+            log.warn("Profile validation errors: {}", bindingResult.getAllErrors());
+            ModelAndView modelAndView = new ModelAndView("agent/edit-profile");
+            modelAndView.addObject("profileDto", profileDto);
+            modelAndView.addObject("errorMessage", "Please correct the errors below");
+            return modelAndView;
         }
 
         try {
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
             agentRegistrationService.updateAgentProfile(agent.getId(), profileDto);
             
@@ -526,33 +463,18 @@ public class AgentController {
             
             redirectAttributes.addFlashAttribute("successMessage", 
                     "Profile updated successfully!");
+            
+            return new ModelAndView("redirect:/agent/dashboard");
 
         } catch (Exception e) {
             log.error("Error updating profile", e);
-            redirectAttributes.addFlashAttribute("errorMessage", 
-                    "Failed to update profile: " + e.getMessage());
-        }
-
-        return "redirect:/agent/dashboard";
-    }
-
-    /**
-     * Parse specializations JSON array back to comma-separated string
-     */
-    private String parseSpecializationsFromJson(String specializationsJson) {
-        if (specializationsJson == null || specializationsJson.trim().isEmpty() || specializationsJson.equals("[]")) {
-            return "";
-        }
-        
-        try {
-            // Remove brackets and quotes, then split by comma
-            String cleaned = specializationsJson.replaceAll("[\\[\\]\"]", "");
-            return cleaned.replaceAll(",\\s*", ", ");
-        } catch (Exception e) {
-            log.warn("Error parsing specializations JSON: {}", specializationsJson, e);
-            return specializationsJson; // Return as-is if parsing fails
+            ModelAndView modelAndView = new ModelAndView("agent/edit-profile");
+            modelAndView.addObject("profileDto", profileDto);
+            modelAndView.addObject("errorMessage", "Failed to update profile: " + e.getMessage());
+            return modelAndView;
         }
     }
+
 
     /**
      * Show inquiries for agent's properties
@@ -563,16 +485,11 @@ public class AgentController {
         ModelAndView modelAndView = new ModelAndView("agent/inquiries");
 
         try {
-            // Get current agent
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
-
-            // Get agent's properties
-            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            // Get agent's properties (with fallback handling)
+            List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
             List<UUID> propertyIds = agentProperties.stream()
                     .map(PropertyDto::getId)
                     .toList();
@@ -580,9 +497,18 @@ public class AgentController {
             // Get inquiries for agent's properties
             List<Inquiry> inquiries = inquiryService.findInquiriesByPropertyIds(propertyIds);
 
+            // Create a map of property ID to property title for easy lookup in template
+            Map<UUID, String> propertyTitleMap = agentProperties.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            PropertyDto::getId,
+                            PropertyDto::getTitle,
+                            (existing, replacement) -> existing
+                    ));
+
             // Enrich inquiries with property information
             modelAndView.addObject("inquiries", inquiries);
             modelAndView.addObject("properties", agentProperties);
+            modelAndView.addObject("propertyTitleMap", propertyTitleMap);
             modelAndView.addObject("statuses", InquiryStatus.values());
             modelAndView.addObject("totalInquiries", inquiries.size());
             modelAndView.addObject("newInquiries", inquiries.stream()
@@ -592,6 +518,13 @@ public class AgentController {
         } catch (Exception e) {
             log.error("Error loading inquiries", e);
             modelAndView.addObject("error", "Error loading inquiries: " + e.getMessage());
+            // Provide default values to prevent template errors
+            modelAndView.addObject("inquiries", List.of());
+            modelAndView.addObject("properties", List.of());
+            modelAndView.addObject("propertyTitleMap", Map.of());
+            modelAndView.addObject("statuses", InquiryStatus.values());
+            modelAndView.addObject("totalInquiries", 0);
+            modelAndView.addObject("newInquiries", 0);
         }
 
         return modelAndView;
@@ -607,19 +540,15 @@ public class AgentController {
 
         try {
             // Get current agent
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
             // Get inquiry
             Inquiry inquiry = inquiryService.findInquiryById(id)
                     .orElseThrow(() -> new RuntimeException("Inquiry not found"));
 
-            // Verify inquiry belongs to agent's property
-            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            // Verify inquiry belongs to agent's property (with fallback handling)
+            List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
             boolean belongsToAgent = agentProperties.stream()
                     .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
 
@@ -656,19 +585,15 @@ public class AgentController {
 
         try {
             // Get current agent
-            String email = authentication.getName();
-            User user = userService.findUserByEmail(email)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-            Agent agent = agentService.findAgentByUserId(user.getId())
-                    .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+            // Get current agent using helper method
+            Agent agent = getCurrentAgent(authentication);
 
             // Get inquiry
             Inquiry inquiry = inquiryService.findInquiryById(id)
                     .orElseThrow(() -> new RuntimeException("Inquiry not found"));
 
-            // Verify inquiry belongs to agent's property
-            List<PropertyDto> agentProperties = propertyServiceClient.getPropertiesByAgent(agent.getId());
+            // Verify inquiry belongs to agent's property (with fallback handling)
+            List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
             boolean belongsToAgent = agentProperties.stream()
                     .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
 
@@ -689,5 +614,98 @@ public class AgentController {
             redirectAttributes.addFlashAttribute("errorMessage", "Failed to update inquiry: " + e.getMessage());
             return "redirect:/agent/inquiries/" + id;
         }
+    }
+
+    // ============================================
+    // @ModelAttribute METHODS
+    // Automatically add cities and propertyTypes to all views
+    // ============================================
+
+    /**
+     * Automatically adds cities to every ModelAndView in this controller.
+     * Spring calls this method before each request handler.
+     * No need to manually add cities anymore!
+     */
+    @ModelAttribute("cities")
+    public List<City> getCities() {
+        return cityService.findAllCities();
+    }
+
+    /**
+     * Automatically adds property types to every ModelAndView in this controller.
+     * Spring calls this method before each request handler.
+     * No need to manually add propertyTypes anymore!
+     */
+    @ModelAttribute("propertyTypes")
+    public List<PropertyType> getPropertyTypes() {
+        return propertyTypeService.findAllPropertyTypes();
+    }
+
+    // ============================================
+    // HELPER METHODS
+    // Reusable methods to eliminate duplicate code
+    // ============================================
+
+    /**
+     * Helper method to get the current logged-in agent.
+     * This method is used by many other methods in this controller.
+     * 
+     * @param authentication - The Spring Security authentication object
+     * @return Agent - The agent profile of the current user
+     * @throws UserNotFoundException - If user is not found
+     * @throws AgentNotFoundException - If agent profile is not found
+     */
+    private Agent getCurrentAgent(Authentication authentication) {
+        // Get the email from the authentication object
+        String email = authentication.getName();
+        
+        // Find the user in the database using the email
+        User user = userService.findUserByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        
+        // Find the agent profile linked to this user
+        return agentService.findAgentByUserId(user.getId())
+                .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
+    }
+
+    /**
+     * Helper method to create an error ModelAndView for the add property form.
+     * This is used when there's an error and we need to show the form again with an error message.
+     * 
+     * @param propertyDto - The property data that was submitted (to show in form again)
+     * @param errorMessage - The error message to display to the user
+     * @return ModelAndView - The error page with all necessary data
+     */
+    private ModelAndView createAddPropertyErrorModel(PropertyDto propertyDto, String errorMessage) {
+        ModelAndView modelAndView = new ModelAndView("agent/add-property");
+        modelAndView.addObject("propertyDto", propertyDto);
+        // Cities and propertyTypes are automatically added by @ModelAttribute
+        modelAndView.addObject("errorMessage", errorMessage);
+        return modelAndView;
+    }
+
+    /**
+     * Helper method to verify that an agent owns a property.
+     * This prevents agents from editing/deleting properties they don't own.
+     * 
+     * @param propertyId - The ID of the property to check
+     * @param agentId - The ID of the agent who should own the property
+     * @param action - The action being attempted (e.g., "edit", "delete")
+     * @return PropertyDto - The property if ownership is verified
+     * @throws PropertyNotFoundException - If property doesn't exist
+     * @throws ApplicationException - If agent doesn't own the property
+     */
+    private PropertyDto verifyPropertyOwnership(UUID propertyId, UUID agentId, String action) {
+        PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
+        if (property == null) {
+            throw new PropertyNotFoundException("Property not found");
+        }
+        
+        if (!property.getAgentId().equals(agentId)) {
+            throw new ApplicationException(
+                "You don't have permission to " + action + " this property");
+        }
+        
+        return property;
     }
 }

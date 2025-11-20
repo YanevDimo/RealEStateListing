@@ -153,9 +153,11 @@
                                             </td>
                                             <td>
                                                 <a th:href="@{/properties/detail(id=${inquiry.propertyId})}" 
-                                                   class="text-decoration-none"
-                                                   th:text="${properties != null ? (#lists.isEmpty(properties) ? 'Property ' + inquiry.propertyId : (properties.?[id == inquiry.propertyId].![title].?[0] ?: 'Property ' + inquiry.propertyId)) : 'Property ' + inquiry.propertyId}">
-                                                    Property
+                                                   class="text-decoration-none">
+                                                    <span th:if="${propertyTitleMap != null and propertyTitleMap[inquiry.propertyId] != null}" 
+                                                          th:text="${propertyTitleMap[inquiry.propertyId]}">Property Title</span>
+                                                    <span th:unless="${propertyTitleMap != null and propertyTitleMap[inquiry.propertyId] != null}" 
+                                                          th:text="'Property ' + ${#strings.toString(inquiry.propertyId)}">Property ID</span>
                                                 </a>
                                             </td>
                                             <td th:text="${inquiry.contactName}">Name</td>

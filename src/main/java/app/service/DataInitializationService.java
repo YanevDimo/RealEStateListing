@@ -1,25 +1,19 @@
 package app.service;
 
-import app.entity.Agent;
 import app.entity.City;
 import app.entity.PropertyType;
-import app.entity.User;
-import app.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DataInitializationService implements CommandLineRunner {
 
-    private final UserService userService;
-    private final AgentService agentService;
     private final CityService cityService;
     private final PropertyTypeService propertyTypeService;
 
@@ -130,13 +124,6 @@ public class DataInitializationService implements CommandLineRunner {
         log.info("Cities and property types initialization completed");
     }
 
-    // Note: Property creation removed - properties are now managed by Property Service microservice
-    // This method is kept for reference but should not be used
-    private void initializeSampleAgentsAndProperties() {
-        // Properties are now created via Property Service microservice
-        // This method is disabled as properties are managed externally
-        log.debug("Property initialization disabled - properties are managed by Property Service");
-    }
 
     private City createCity(String name) {
         City city = City.builder()
@@ -162,48 +149,14 @@ public class DataInitializationService implements CommandLineRunner {
         }
     }
 
-    private User createUser(String email, String name, String phone) {
-        User user = User.builder()
-                .email(email)
-                .name(name)
-                .phone(phone)
-                .passwordHash("$2a$10$dummy.hash.for.testing.purposes")
-                .role(UserRole.AGENT)
-                .isActive(true)
-                .build();
-        return userService.saveUser(user);
-    }
 
-    private Agent createAgent(User user, String licenseNumber, String bio, int experienceYears, String specializations) {
-        Agent agent = Agent.builder()
-                .user(user)
-                .licenseNumber(licenseNumber)
-                .bio(bio)
-                .experienceYears(experienceYears)
-                .specializations(specializations)
-                .rating(new BigDecimal("4.5"))
-                .totalListings(0)
-                .build();
-        return agentService.saveAgent(agent);
-    }
-
-    // Note: Property creation removed - properties are now managed by Property Service microservice
-    // This method is disabled as Property entity no longer exists in main app
-    private void createProperty(String title, String description, PropertyType type, City city,
-                               String address, BigDecimal price, int beds, int baths,
-                               BigDecimal areaSqm, int yearBuilt, Agent agent) {
-        // Properties are now created via Property Service REST API
-        // Use PropertyServiceClient.createProperty() instead
-        log.debug("Property creation disabled - properties are managed by Property Service microservice");
-    }
-
-    private City createCityIfNotExists(String name) {
-        return cityService.findCityByName(name)
+    private void createCityIfNotExists(String name) {
+        cityService.findCityByName(name)
                 .orElseGet(() -> createCity(name));
     }
 
-    private PropertyType createPropertyTypeIfNotExists(String name) {
-        return propertyTypeService.findPropertyTypeByName(name)
+    private void createPropertyTypeIfNotExists(String name) {
+        propertyTypeService.findPropertyTypeByName(name)
                 .orElseGet(() -> createPropertyType(name));
     }
 }

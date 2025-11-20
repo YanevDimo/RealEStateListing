@@ -405,6 +405,46 @@ public class AgentService {
         return updatedCount;
     }
 
+    /**
+     * Calculate statistics for a list of agents.
+     * Returns counts and averages for display purposes.
+     */
+    public AgentListStatistics calculateAgentListStatistics(List<Agent> agents) {
+        if (agents == null || agents.isEmpty()) {
+            return new AgentListStatistics(0, 0, 0.0);
+        }
+
+        long agentsWithProperties = agents.stream()
+                .filter(agent -> agent != null && agent.getTotalListings() != null && agent.getTotalListings() > 0)
+                .count();
+
+        double avgExperience = agents.stream()
+                .filter(agent -> agent != null && agent.getExperienceYears() != null)
+                .mapToInt(Agent::getExperienceYears)
+                .average()
+                .orElse(0.0);
+
+        return new AgentListStatistics(agents.size(), agentsWithProperties, Math.round(avgExperience * 10.0) / 10.0);
+    }
+
+    /**
+     * Parse specializations JSON array back to comma-separated string.
+     */
+    public String parseSpecializationsFromJson(String specializationsJson) {
+        if (specializationsJson == null || specializationsJson.trim().isEmpty() || specializationsJson.equals("[]")) {
+            return "";
+        }
+
+        try {
+            // Remove brackets and quotes, then split by comma
+            String cleaned = specializationsJson.replaceAll("[\\[\\]\"]", "");
+            return cleaned.replaceAll(",\\s*", ", ");
+        } catch (Exception e) {
+            log.warn("Error parsing specializations JSON: {}", specializationsJson, e);
+            return specializationsJson; // Return as-is if parsing fails
+        }
+    }
+
     public static class AgentStatistics {
         private final long totalAgents;
         private final BigDecimal averageRating;
@@ -419,5 +459,21 @@ public class AgentService {
         public long getTotalAgents() { return totalAgents; }
         public BigDecimal getAverageRating() { return averageRating; }
         public Long getTotalListings() { return totalListings; }
+    }
+
+    public static class AgentListStatistics {
+        private final long totalAgents;
+        private final long agentsWithProperties;
+        private final double averageExperience;
+
+        public AgentListStatistics(long totalAgents, long agentsWithProperties, double averageExperience) {
+            this.totalAgents = totalAgents;
+            this.agentsWithProperties = agentsWithProperties;
+            this.averageExperience = averageExperience;
+        }
+
+        public long getTotalAgents() { return totalAgents; }
+        public long getAgentsWithProperties() { return agentsWithProperties; }
+        public double getAverageExperience() { return averageExperience; }
     }
 }

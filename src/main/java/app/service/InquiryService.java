@@ -25,7 +25,7 @@ public class InquiryService {
     private final UserService userService;
 
     @Transactional
-    public Inquiry createInquiry(InquiryDto inquiryDto, UUID propertyId, Authentication authentication) {
+    public void createInquiry(InquiryDto inquiryDto, UUID propertyId, Authentication authentication) {
         log.info("Creating inquiry for property: {}", propertyId);
         
         User user = null;
@@ -50,7 +50,6 @@ public class InquiryService {
 
         Inquiry savedInquiry = inquiryRepository.save(inquiry);
         log.info("Inquiry created successfully with ID: {}", savedInquiry.getId());
-        return savedInquiry;
     }
 
     public List<Inquiry> findInquiriesByPropertyId(UUID propertyId) {
@@ -112,7 +111,7 @@ public class InquiryService {
     }
 
     @Transactional
-    public Inquiry updateInquiry(UUID id, InquiryStatus status, String response) {
+    public void updateInquiry(UUID id, InquiryStatus status, String response) {
         log.info("Updating inquiry {} with status: {} and response", id, status);
         Inquiry inquiry = inquiryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Inquiry not found with ID: " + id));
@@ -126,8 +125,8 @@ public class InquiryService {
                 inquiry.setStatus(InquiryStatus.CONTACTED);
             }
         }
-        
-        return inquiryRepository.save(inquiry);
+
+        inquiryRepository.save(inquiry);
     }
 }
 
