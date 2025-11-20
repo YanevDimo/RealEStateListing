@@ -34,19 +34,11 @@ public class AgentService {
     private final PropertyUtilityService propertyUtilityService;
 
 
-    // HELPER METHODS - Reduce Code Duplication
 
-    /**
-     * Helper method to find an agent by ID or throw an exception if not found.
-     * WHY THIS HELPER METHOD?
-     * Before: We had the same code repeated 5 times:
-     * agentRepository.findById(agentId).orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
-     * After: We call this helper method instead, which:
-     * 1. Makes the code shorter and easier to read
-     * 2. Uses a proper exception type (AgentNotFoundException) instead of generic RuntimeException
-     * 3. Makes it easier to change the error message in one place if needed
-     * 4. Reduces the chance of typos in error messages
-     **/
+
+
+      //Helper method to find an agent by ID or throw an exception if not found.
+
     private Agent findAgentByIdOrThrow(UUID id) {
         return agentRepository.findById(id)
                 .orElseThrow(() -> new AgentNotFoundException(id));
@@ -55,19 +47,13 @@ public class AgentService {
     /**
      * Helper method to find a user by ID or throw an exception if not found.
      * This is used when creating an agent - we need to make sure the user exists first.
-     *
-     * @param id The user ID to look for
-     * @return The User if found
-     * @throws UserNotFoundException if the user doesn't exist
-     */
+    **/
     private User findUserByIdOrThrow(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
 
-    // ==========================================
-    // PUBLIC SERVICE METHODS
-    // ==========================================
+
 
     public List<Agent> findAllAgents() {
         log.debug("Finding all agents");
@@ -355,12 +341,12 @@ public class AgentService {
 
 
     @Transactional
-    public Agent decrementAgentListings(UUID agentId) {
+    public void decrementAgentListings(UUID agentId) {
         log.debug("Decrementing agent listings count: {}", agentId);
         // Use  helper method instead of repeating the same code
         Agent agent = findAgentByIdOrThrow(agentId);
         agent.setTotalListings(Math.max(0, agent.getTotalListings() - 1));
-        return agentRepository.save(agent);
+        agentRepository.save(agent);
     }
 
     /**
@@ -463,9 +449,9 @@ public class AgentService {
         return new AgentListStatistics(agents.size(), agentsWithProperties, Math.round(avgExperience * 10.0) / 10.0);
     }
 
-    /**
-     * Parse specializations JSON array back to comma-separated string.
-     */
+
+     // Parse specializations JSON array back to comma-separated string.
+
     public String parseSpecializationsFromJson(String specializationsJson) {
         if (specializationsJson == null || specializationsJson.trim().isEmpty() || specializationsJson.equals("[]")) {
             return "";

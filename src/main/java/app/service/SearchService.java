@@ -30,32 +30,9 @@ public class SearchService {
     private final PropertyTypeService propertyTypeService;
     private final PropertyUtilityService propertyUtilityService;
 
-    // ==========================================
-    // HELPER METHODS - Reduce Code Duplication
-    // ==========================================
+
     
-    /**
-     * Helper method to filter properties based on search criteria.
-     * 
-     * WHY THIS HELPER METHOD?
-     * Before: We had the same filtering logic written twice (about 100 lines of duplicate code):
-     *   - Once in the main search path (lines 64-98)
-     *   - Once in the fallback path (lines 117-179)
-     * 
-     * After: We call this helper method instead, which:
-     *   1. Makes the code much shorter and easier to read
-     *   2. If we need to change how filtering works, we only change it in one place
-     *   3. Reduces the chance of bugs from having two different versions of the same logic
-     *   4. Makes it easier to test the filtering logic separately
-     * 
-     * @param property The property to check
-     * @param criteria The search criteria to filter by
-     * @param cityId Optional city ID filter (null if not filtering by city)
-     * @param propertyTypeId Optional property type ID filter (null if not filtering by type)
-     * @param maxPrice Optional max price filter (null if not filtering by max price)
-     * @param includeSearchTerm Whether to also filter by search term in title/description
-     * @return true if the property matches all the criteria, false otherwise
-     */
+
     private boolean matchesFilterCriteria(PropertyDto property, SearchCriteria criteria, 
                                          UUID cityId, UUID propertyTypeId, Double maxPrice, 
                                          boolean includeSearchTerm) {
@@ -117,18 +94,14 @@ public class SearchService {
             String searchTerm = criteria.getSearchTerm().toLowerCase();
             String title = property.getTitle() != null ? property.getTitle().toLowerCase() : "";
             String description = property.getDescription() != null ? property.getDescription().toLowerCase() : "";
-            if (!title.contains(searchTerm) && !description.contains(searchTerm)) {
-                return false;
-            }
+            return title.contains(searchTerm) || description.contains(searchTerm);
         }
         
         // If we got here, the property matches all the criteria
         return true;
     }
 
-    // ==========================================
-    // PUBLIC SERVICE METHODS
-    // ==========================================
+
 
     public List<PropertyDto> searchProperties(SearchCriteria criteria) {
         log.debug("Searching properties with criteria: {}", criteria);
@@ -216,9 +189,9 @@ public class SearchService {
         }
     }
 
-    /**
-     * Search properties with pagination
-     */
+
+     // Search properties with pagination
+
     public Page<PropertyDto> searchProperties(SearchCriteria criteria, Pageable pageable) {
         log.debug("Searching properties with criteria: {} and pagination: {}", criteria, pageable);
         
@@ -250,9 +223,9 @@ public class SearchService {
         }
     }
 
-    /**
-     * Get featured properties - cached for performance
-     */
+
+     // Get featured properties - cached for performance
+
     @Cacheable("featuredProperties")
     public List<PropertyDto> getFeaturedProperties() {
         log.debug("Getting featured properties from property-service");
@@ -371,10 +344,9 @@ public class SearchService {
                 .toList();
     }
 
-    /**
-     * Build SearchCriteria from request parameters.
-     * Handles parsing and validation of search parameters.
-     */
+     // Build SearchCriteria from request parameters.
+     // Handles parsing and validation of search parameters.
+
     public SearchCriteria buildSearchCriteria(String search, String city, String type, String maxPrice) {
         SearchCriteria criteria = new SearchCriteria();
         criteria.setCityName(city);
