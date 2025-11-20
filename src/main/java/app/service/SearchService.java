@@ -4,12 +4,14 @@ import app.client.PropertyServiceClient;
 import app.dto.PropertyDto;
 import app.entity.City;
 import app.entity.PropertyType;
+import app.util.PaginationUtil;
 import feign.FeignException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -28,12 +30,111 @@ public class SearchService {
     private final PropertyTypeService propertyTypeService;
     private final PropertyUtilityService propertyUtilityService;
 
+    // ==========================================
+    // HELPER METHODS - Reduce Code Duplication
+    // ==========================================
+    
+    /**
+     * Helper method to filter properties based on search criteria.
+     * 
+     * WHY THIS HELPER METHOD?
+     * Before: We had the same filtering logic written twice (about 100 lines of duplicate code):
+     *   - Once in the main search path (lines 64-98)
+     *   - Once in the fallback path (lines 117-179)
+     * 
+     * After: We call this helper method instead, which:
+     *   1. Makes the code much shorter and easier to read
+     *   2. If we need to change how filtering works, we only change it in one place
+     *   3. Reduces the chance of bugs from having two different versions of the same logic
+     *   4. Makes it easier to test the filtering logic separately
+     * 
+     * @param property The property to check
+     * @param criteria The search criteria to filter by
+     * @param cityId Optional city ID filter (null if not filtering by city)
+     * @param propertyTypeId Optional property type ID filter (null if not filtering by type)
+     * @param maxPrice Optional max price filter (null if not filtering by max price)
+     * @param includeSearchTerm Whether to also filter by search term in title/description
+     * @return true if the property matches all the criteria, false otherwise
+     */
+    private boolean matchesFilterCriteria(PropertyDto property, SearchCriteria criteria, 
+                                         UUID cityId, UUID propertyTypeId, Double maxPrice, 
+                                         boolean includeSearchTerm) {
+        // Filter by city (if specified)
+        if (cityId != null && !cityId.equals(property.getCityId())) {
+            return false;
+        }
+        
+        // Filter by property type (if specified)
+        if (propertyTypeId != null && !propertyTypeId.equals(property.getPropertyTypeId())) {
+            return false;
+        }
+        
+        // Filter by max price (if specified)
+        if (maxPrice != null && 
+            (property.getPrice() == null || property.getPrice().doubleValue() > maxPrice)) {
+            return false;
+        }
+        
+        // Filter by min price (if specified)
+        if (criteria.getMinPrice() != null && 
+            (property.getPrice() == null || property.getPrice().compareTo(criteria.getMinPrice()) < 0)) {
+            return false;
+        }
+        
+        // Filter by minimum number of beds (if specified)
+        if (criteria.getMinBeds() != null && 
+            (property.getBeds() == null || property.getBeds() < criteria.getMinBeds())) {
+            return false;
+        }
+        
+        // Filter by minimum number of baths (if specified)
+        if (criteria.getMinBaths() != null && 
+            (property.getBaths() == null || property.getBaths() < criteria.getMinBaths())) {
+            return false;
+        }
+        
+        // Filter by minimum area (if specified)
+        if (criteria.getMinArea() != null && 
+            (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMinArea()) < 0)) {
+            return false;
+        }
+        
+        // Filter by maximum area (if specified)
+        if (criteria.getMaxArea() != null && 
+            (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMaxArea()) > 0)) {
+            return false;
+        }
+        
+        // Filter by featured status (if specified)
+        if (criteria.getFeatured() != null) {
+            if (property.getIsFeatured() == null || !property.getIsFeatured().equals(criteria.getFeatured())) {
+                return false;
+            }
+        }
+        
+        // Filter by search term in title/description (if requested and specified)
+        if (includeSearchTerm && criteria.getSearchTerm() != null && !criteria.getSearchTerm().trim().isEmpty()) {
+            String searchTerm = criteria.getSearchTerm().toLowerCase();
+            String title = property.getTitle() != null ? property.getTitle().toLowerCase() : "";
+            String description = property.getDescription() != null ? property.getDescription().toLowerCase() : "";
+            if (!title.contains(searchTerm) && !description.contains(searchTerm)) {
+                return false;
+            }
+        }
+        
+        // If we got here, the property matches all the criteria
+        return true;
+    }
+
+    // ==========================================
+    // PUBLIC SERVICE METHODS
+    // ==========================================
 
     public List<PropertyDto> searchProperties(SearchCriteria criteria) {
         log.debug("Searching properties with criteria: {}", criteria);
         
         // Convert city name to UUID (declare outside try for use in catch block)
-        java.util.UUID cityId = null;
+        UUID cityId = null;
         if (criteria.getCityName() != null && !criteria.getCityName().trim().isEmpty()) {
             cityId = cityService.findCityByNameIgnoreCase(criteria.getCityName().trim())
                     .map(City::getId)
@@ -61,40 +162,18 @@ public class SearchService {
             log.info("Property-service returned {} properties for search criteria", properties != null ? properties.size() : 0);
             
             // Apply additional filters in memory (beds, baths, area, featured, minPrice)
+            // Note: city, propertyType, and maxPrice are already filtered by the API call,
+            // so we pass null for those. We also don't need to filter by search term here
+            // because the API already did that.
+            final UUID finalCityId = null; // Already filtered by API
+            final UUID finalPropertyTypeId = null; // Already filtered by API
+            final Double finalMaxPrice = null; // Already filtered by API
+            final boolean includeSearchTerm = false; // Already filtered by API
+            
             return properties.stream()
-                    .filter(property -> {
-                        // Filter by min price
-                        if (criteria.getMinPrice() != null && 
-                            (property.getPrice() == null || property.getPrice().compareTo(criteria.getMinPrice()) < 0)) {
-                            return false;
-                        }
-                        
-                        // Filter by beds
-                        if (criteria.getMinBeds() != null && 
-                            (property.getBeds() == null || property.getBeds() < criteria.getMinBeds())) {
-                            return false;
-                        }
-                        
-                        // Filter by baths
-                        if (criteria.getMinBaths() != null && 
-                            (property.getBaths() == null || property.getBaths() < criteria.getMinBaths())) {
-                            return false;
-                        }
-                        
-                        // Filter by area range
-                        if (criteria.getMinArea() != null && 
-                            (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMinArea()) < 0)) {
-                            return false;
-                        }
-                        if (criteria.getMaxArea() != null && 
-                            (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMaxArea()) > 0)) {
-                            return false;
-                        }
-                        
-                        // Filter by featured
-                        return criteria.getFeatured() == null || 
-                               property.getIsFeatured() != null && property.getIsFeatured().equals(criteria.getFeatured());
-                    })
+                    .filter(property -> matchesFilterCriteria(property, criteria, 
+                                                              finalCityId, finalPropertyTypeId, 
+                                                              finalMaxPrice, includeSearchTerm))
                     .collect(Collectors.toList());
         } catch (FeignException e) {
             log.error("Error calling property-service for search: Status {} - {}", e.status(), e.getMessage());
@@ -108,74 +187,18 @@ public class SearchService {
                     if (allProperties != null && !allProperties.isEmpty()) {
                         log.info("Fallback: Retrieved {} properties via getAllProperties(), applying filters in memory", allProperties.size());
                         
-                        // Create final copies
+                        // Create final copies for use in lambda
                         final UUID finalCityId = cityId;
                         final UUID finalPropertyTypeId = propertyTypeId;
                         final Double finalMaxPrice = maxPrice;
+                        final boolean includeSearchTerm = true; // Need to filter by search term in fallback
                         
-                        // Apply all filters in memory
+                        // Apply all filters in memory using our helper method
+                        // In the fallback path, we need to filter by everything since the API didn't do it
                         return allProperties.stream()
-                                .filter(property -> {
-                                    // Filter by city
-                                    if (finalCityId != null && !finalCityId.equals(property.getCityId())) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by property type
-                                    if (finalPropertyTypeId != null && !finalPropertyTypeId.equals(property.getPropertyTypeId())) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by max price
-                                    if (finalMaxPrice != null && 
-                                        (property.getPrice() == null || property.getPrice().doubleValue() > finalMaxPrice)) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by min price
-                                    if (criteria.getMinPrice() != null && 
-                                        (property.getPrice() == null || property.getPrice().compareTo(criteria.getMinPrice()) < 0)) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by beds
-                                    if (criteria.getMinBeds() != null && 
-                                        (property.getBeds() == null || property.getBeds() < criteria.getMinBeds())) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by baths
-                                    if (criteria.getMinBaths() != null && 
-                                        (property.getBaths() == null || property.getBaths() < criteria.getMinBaths())) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by area range
-                                    if (criteria.getMinArea() != null && 
-                                        (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMinArea()) < 0)) {
-                                        return false;
-                                    }
-                                    if (criteria.getMaxArea() != null && 
-                                        (property.getAreaSqm() == null || property.getAreaSqm().compareTo(criteria.getMaxArea()) > 0)) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by featured
-                                    if (criteria.getFeatured() != null && 
-                                        (property.getIsFeatured() == null || !property.getIsFeatured().equals(criteria.getFeatured()))) {
-                                        return false;
-                                    }
-                                    
-                                    // Filter by search term (text search in title/description)
-                                    if (criteria.getSearchTerm() != null && !criteria.getSearchTerm().trim().isEmpty()) {
-                                        String searchTerm = criteria.getSearchTerm().toLowerCase();
-                                        String title = property.getTitle() != null ? property.getTitle().toLowerCase() : "";
-                                        String description = property.getDescription() != null ? property.getDescription().toLowerCase() : "";
-                                        return title.contains(searchTerm) || description.contains(searchTerm);
-                                    }
-                                    
-                                    return true;
-                                })
+                                .filter(property -> matchesFilterCriteria(property, criteria, 
+                                                                          finalCityId, finalPropertyTypeId, 
+                                                                          finalMaxPrice, includeSearchTerm))
                                 .collect(Collectors.toList());
                     } else {
                         log.warn("Fallback getAllProperties() returned null or empty list");
@@ -200,11 +223,8 @@ public class SearchService {
         log.debug("Searching properties with criteria: {} and pagination: {}", criteria, pageable);
         
         List<PropertyDto> properties = searchProperties(criteria);
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), properties.size());
-        List<PropertyDto> pageContent = start < properties.size() ? 
-                properties.subList(start, Math.min(end, properties.size())) : List.of();
-        return new PageImpl<>(pageContent, pageable, properties.size());
+        // Use our pagination utility instead of repeating the same code
+        return PaginationUtil.paginateList(properties, pageable);
     }
 
     /**
@@ -372,6 +392,8 @@ public class SearchService {
     }
 
 
+    @Setter
+    @Getter
     public static class SearchCriteria {
         private String searchTerm;
         private String cityName;
@@ -401,36 +423,6 @@ public class SearchService {
             this.maxArea = maxArea;
             this.featured = featured;
         }
-
-        public String getSearchTerm() { return searchTerm; }
-        public void setSearchTerm(String searchTerm) { this.searchTerm = searchTerm; }
-
-        public String getCityName() { return cityName; }
-        public void setCityName(String cityName) { this.cityName = cityName; }
-
-        public String getPropertyTypeName() { return propertyTypeName; }
-        public void setPropertyTypeName(String propertyTypeName) { this.propertyTypeName = propertyTypeName; }
-
-        public BigDecimal getMinPrice() { return minPrice; }
-        public void setMinPrice(BigDecimal minPrice) { this.minPrice = minPrice; }
-
-        public BigDecimal getMaxPrice() { return maxPrice; }
-        public void setMaxPrice(BigDecimal maxPrice) { this.maxPrice = maxPrice; }
-
-        public Integer getMinBeds() { return minBeds; }
-        public void setMinBeds(Integer minBeds) { this.minBeds = minBeds; }
-
-        public Integer getMinBaths() { return minBaths; }
-        public void setMinBaths(Integer minBaths) { this.minBaths = minBaths; }
-
-        public BigDecimal getMinArea() { return minArea; }
-        public void setMinArea(BigDecimal minArea) { this.minArea = minArea; }
-
-        public BigDecimal getMaxArea() { return maxArea; }
-        public void setMaxArea(BigDecimal maxArea) { this.maxArea = maxArea; }
-
-        public Boolean getFeatured() { return featured; }
-        public void setFeatured(Boolean featured) { this.featured = featured; }
 
         @Override
         public String toString() {

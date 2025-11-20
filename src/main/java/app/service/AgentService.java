@@ -4,8 +4,11 @@ import app.client.PropertyServiceClient;
 import app.dto.PropertyDto;
 import app.entity.Agent;
 import app.entity.User;
+import app.exception.AgentNotFoundException;
+import app.exception.UserNotFoundException;
 import app.repository.AgentRepository;
 import app.repository.UserRepository;
+import app.util.PaginationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,41 @@ public class AgentService {
     private final PropertyUtilityService propertyUtilityService;
 
 
+    // HELPER METHODS - Reduce Code Duplication
+
+    /**
+     * Helper method to find an agent by ID or throw an exception if not found.
+     * WHY THIS HELPER METHOD?
+     * Before: We had the same code repeated 5 times:
+     * agentRepository.findById(agentId).orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
+     * After: We call this helper method instead, which:
+     * 1. Makes the code shorter and easier to read
+     * 2. Uses a proper exception type (AgentNotFoundException) instead of generic RuntimeException
+     * 3. Makes it easier to change the error message in one place if needed
+     * 4. Reduces the chance of typos in error messages
+     **/
+    private Agent findAgentByIdOrThrow(UUID id) {
+        return agentRepository.findById(id)
+                .orElseThrow(() -> new AgentNotFoundException(id));
+    }
+
+    /**
+     * Helper method to find a user by ID or throw an exception if not found.
+     * This is used when creating an agent - we need to make sure the user exists first.
+     *
+     * @param id The user ID to look for
+     * @return The User if found
+     * @throws UserNotFoundException if the user doesn't exist
+     */
+    private User findUserByIdOrThrow(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    // ==========================================
+    // PUBLIC SERVICE METHODS
+    // ==========================================
+
     public List<Agent> findAllAgents() {
         log.debug("Finding all agents");
         return agentRepository.findAll();
@@ -55,7 +93,6 @@ public class AgentService {
             agentRepository.save(agent);
         });
     }
-
 
 
     public Optional<Agent> findAgentById(UUID id) {
@@ -100,13 +137,13 @@ public class AgentService {
 
     public List<Agent> findTopRatedAgents(Pageable pageable) {
         log.debug("Finding top-rated agents with pagination: {}", pageable);
-        // Sort agents by rating in descending order and apply pagination
+        // Sort agents by rating in descending order
         List<Agent> allAgents = agentRepository.findAll().stream()
                 .sorted((a, b) -> b.getRating().compareTo(a.getRating()))
                 .toList();
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), allAgents.size());
-        return allAgents.subList(start, end);
+        // Use our pagination utility instead of repeating the same code
+        // Note: This returns a Page, but we extract the content as a List
+        return PaginationUtil.paginateList(allAgents, pageable).getContent();
     }
 
 
@@ -128,13 +165,13 @@ public class AgentService {
 
     public List<Agent> findAgentsByMostListings(Pageable pageable) {
         log.debug("Finding agents by most listings with pagination: {}", pageable);
-        // Sort agents by total listings in descending order and apply pagination
+        // Sort agents by total listings in descending order
         List<Agent> allAgents = agentRepository.findAll().stream()
                 .sorted((a, b) -> Integer.compare(b.getTotalListings(), a.getTotalListings()))
                 .toList();
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), allAgents.size());
-        return allAgents.subList(start, end);
+        // Use our pagination utility instead of repeating the same code
+        // Note: This returns a Page, but we extract the content as a List
+        return PaginationUtil.paginateList(allAgents, pageable).getContent();
     }
 
 
@@ -248,12 +285,12 @@ public class AgentService {
 
 
     @Transactional
-    public Agent createAgent(UUID userId, String licenseNumber, String bio, 
-                           Integer experienceYears, String specializations) {
+    public Agent createAgent(UUID userId, String licenseNumber, String bio,
+                             Integer experienceYears, String specializations) {
         log.debug("Creating new agent for user: {}", userId);
-        
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        // Use our helper method instead of repeating the same code
+        User user = findUserByIdOrThrow(userId);
 
         if (agentRepository.existsByUserId(userId)) {
             throw new RuntimeException("Agent already exists for user: " + userId);
@@ -280,8 +317,8 @@ public class AgentService {
     @Transactional
     public Agent updateAgentRating(UUID agentId, BigDecimal rating) {
         log.debug("Updating agent rating: {} to {}", agentId, rating);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
+        // Use helper method instead of repeating the same code
+        Agent agent = findAgentByIdOrThrow(agentId);
         agent.setRating(rating);
         return agentRepository.save(agent);
     }
@@ -290,8 +327,8 @@ public class AgentService {
     @Transactional
     public Agent updateAgentExperience(UUID agentId, Integer experienceYears) {
         log.debug("Updating agent experience: {} to {} years", agentId, experienceYears);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
+        // Use helper method instead of repeating the same code
+        Agent agent = findAgentByIdOrThrow(agentId);
         agent.setExperienceYears(experienceYears);
         return agentRepository.save(agent);
     }
@@ -300,8 +337,8 @@ public class AgentService {
     @Transactional
     public Agent updateAgentBio(UUID agentId, String bio) {
         log.debug("Updating agent bio: {}", agentId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
+        // Use  helper method instead of repeating the same code
+        Agent agent = findAgentByIdOrThrow(agentId);
         agent.setBio(bio);
         return agentRepository.save(agent);
     }
@@ -310,8 +347,8 @@ public class AgentService {
     @Transactional
     public Agent updateAgentSpecializations(UUID agentId, String specializations) {
         log.debug("Updating agent specializations: {}", agentId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
+        // Use  helper method instead of repeating the same code
+        Agent agent = findAgentByIdOrThrow(agentId);
         agent.setSpecializations(specializations);
         return agentRepository.save(agent);
     }
@@ -320,8 +357,8 @@ public class AgentService {
     @Transactional
     public Agent decrementAgentListings(UUID agentId) {
         log.debug("Decrementing agent listings count: {}", agentId);
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found with ID: " + agentId));
+        // Use  helper method instead of repeating the same code
+        Agent agent = findAgentByIdOrThrow(agentId);
         agent.setTotalListings(Math.max(0, agent.getTotalListings() - 1));
         return agentRepository.save(agent);
     }
@@ -336,26 +373,26 @@ public class AgentService {
         log.debug("Syncing agent listings from property-service");
         List<Agent> agents = agentRepository.findAll();
         int updatedCount = 0;
-        
+
         for (Agent agent : agents) {
             try {
                 // Get actual property count from property-service
                 long actualCount = countActivePropertiesByAgent(agent.getId());
-                
+
                 // Update if different
                 Integer oldCount = agent.getTotalListings();
                 if (oldCount == null || oldCount != actualCount) {
                     agent.setTotalListings((int) actualCount);
                     agentRepository.save(agent);
                     updatedCount++;
-                    log.debug("Updated listings for agent {}: {} -> {}", 
+                    log.debug("Updated listings for agent {}: {} -> {}",
                             agent.getId(), oldCount, actualCount);
                 }
             } catch (Exception e) {
                 log.error("Error syncing listings for agent {}: {}", agent.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Synced listings for {} agents from property-service", updatedCount);
         return updatedCount;
     }
@@ -366,10 +403,9 @@ public class AgentService {
         long totalAgents = agentRepository.count();
         BigDecimal averageRating = getAverageRating();
         Long totalListings = getTotalListings();
-        
+
         return new AgentStatistics(totalAgents, averageRating, totalListings);
     }
-
 
 
 //      Recalculate agent ratings based on recent activity.
@@ -380,19 +416,19 @@ public class AgentService {
         log.debug("Recalculating agent ratings");
         List<Agent> agents = agentRepository.findAll();
         int updatedCount = 0;
-        
+
         for (Agent agent : agents) {
             // Simple rating calculation based on total listings and experience
-           
+
             if (agent.getTotalListings() != null && agent.getTotalListings() > 0) {
                 // Base rating on listings and experience
                 BigDecimal newRating = BigDecimal.valueOf(
-                    Math.min(5.0, 
-                        3.0 + (agent.getTotalListings() * 0.1) + 
-                        (agent.getExperienceYears() != null ? agent.getExperienceYears() * 0.05 : 0)
-                    )
+                        Math.min(5.0,
+                                3.0 + (agent.getTotalListings() * 0.1) +
+                                        (agent.getExperienceYears() != null ? agent.getExperienceYears() * 0.05 : 0)
+                        )
                 );
-                
+
                 if (agent.getRating() == null || !agent.getRating().equals(newRating)) {
                     agent.setRating(newRating);
                     agentRepository.save(agent);
@@ -400,7 +436,7 @@ public class AgentService {
                 }
             }
         }
-        
+
         log.info("Recalculated ratings for {} agents", updatedCount);
         return updatedCount;
     }
@@ -456,9 +492,17 @@ public class AgentService {
             this.totalListings = totalListings;
         }
 
-        public long getTotalAgents() { return totalAgents; }
-        public BigDecimal getAverageRating() { return averageRating; }
-        public Long getTotalListings() { return totalListings; }
+        public long getTotalAgents() {
+            return totalAgents;
+        }
+
+        public BigDecimal getAverageRating() {
+            return averageRating;
+        }
+
+        public Long getTotalListings() {
+            return totalListings;
+        }
     }
 
     public static class AgentListStatistics {
@@ -472,8 +516,16 @@ public class AgentService {
             this.averageExperience = averageExperience;
         }
 
-        public long getTotalAgents() { return totalAgents; }
-        public long getAgentsWithProperties() { return agentsWithProperties; }
-        public double getAverageExperience() { return averageExperience; }
+        public long getTotalAgents() {
+            return totalAgents;
+        }
+
+        public long getAgentsWithProperties() {
+            return agentsWithProperties;
+        }
+
+        public double getAverageExperience() {
+            return averageExperience;
+        }
     }
 }

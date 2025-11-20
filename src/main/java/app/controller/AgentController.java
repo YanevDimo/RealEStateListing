@@ -12,7 +12,11 @@ import app.entity.Inquiry;
 import app.entity.InquiryStatus;
 import app.entity.PropertyType;
 import app.entity.User;
-import app.exception.*;
+import app.exception.AgentNotFoundException;
+import app.exception.ApplicationException;
+import app.exception.InquiryNotFoundException;
+import app.exception.PropertyNotFoundException;
+import app.exception.UserNotFoundException;
 import app.service.*;
 import feign.FeignException;
 import jakarta.validation.Valid;
@@ -545,14 +549,10 @@ public class AgentController {
 
             // Get inquiry
             Inquiry inquiry = inquiryService.findInquiryById(id)
-                    .orElseThrow(() -> new RuntimeException("Inquiry not found"));
+                    .orElseThrow(() -> new InquiryNotFoundException(id));
 
-            // Verify inquiry belongs to agent's property (with fallback handling)
-            List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
-            boolean belongsToAgent = agentProperties.stream()
-                    .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
-
-            if (!belongsToAgent) {
+            // Verify inquiry belongs to agent's property using our helper method
+            if (!verifyPropertyBelongsToAgent(agent.getId(), inquiry.getPropertyId())) {
                 modelAndView.addObject("error", "You don't have permission to view this inquiry");
                 return modelAndView;
             }
@@ -590,14 +590,10 @@ public class AgentController {
 
             // Get inquiry
             Inquiry inquiry = inquiryService.findInquiryById(id)
-                    .orElseThrow(() -> new RuntimeException("Inquiry not found"));
+                    .orElseThrow(() -> new InquiryNotFoundException(id));
 
-            // Verify inquiry belongs to agent's property (with fallback handling)
-            List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
-            boolean belongsToAgent = agentProperties.stream()
-                    .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
-
-            if (!belongsToAgent) {
+            // Verify inquiry belongs to agent's property using our helper method
+            if (!verifyPropertyBelongsToAgent(agent.getId(), inquiry.getPropertyId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "You don't have permission to update this inquiry");
                 return "redirect:/agent/inquiries";
             }
@@ -645,6 +641,43 @@ public class AgentController {
     // HELPER METHODS
     // Reusable methods to eliminate duplicate code
     // ============================================
+
+    /**
+     * Helper method to get the current logged-in agent.
+     * This method is used by many other methods in this controller.
+     * 
+     * @param authentication - The Spring Security authentication object
+     * @return Agent - The agent profile of the current user
+     * @throws UserNotFoundException - If user is not found
+     * @throws AgentNotFoundException - If agent profile is not found
+     */
+    /**
+     * Helper method to verify if an inquiry belongs to an agent's property.
+     * 
+     * WHY THIS HELPER METHOD?
+     * Before: We had the same verification code repeated 2 times:
+     *   List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
+     *   boolean belongsToAgent = agentProperties.stream()
+     *       .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
+     * 
+     * After: We call this helper method instead, which:
+     *   1. Makes the code shorter and easier to read
+     *   2. If we need to change how verification works, we only change it in one place
+     *   3. Reduces the chance of bugs from having different versions of the same logic
+     *   4. Makes it easier to test the verification logic separately
+     * 
+     * @param agentId The ID of the agent to check
+     * @param propertyId The ID of the property to verify
+     * @return true if the property belongs to the agent, false otherwise
+     */
+    private boolean verifyPropertyBelongsToAgent(UUID agentId, UUID propertyId) {
+        // Get all properties owned by this agent
+        List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agentId);
+        
+        // Check if any of the agent's properties match the property ID we're looking for
+        return agentProperties.stream()
+                .anyMatch(p -> p.getId().equals(propertyId));
+    }
 
     /**
      * Helper method to get the current logged-in agent.
