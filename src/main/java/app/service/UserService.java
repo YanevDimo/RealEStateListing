@@ -3,7 +3,9 @@ package app.service;
 
 import app.entity.User;
 import app.entity.UserRole;
+import app.exception.UserNotFoundException;
 import app.repository.UserRepository;
+import app.util.PaginationUtil;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,35 @@ public class UserService {
 
     private final UserRepository userRepository;
 
+    // ==========================================
+    // HELPER METHODS - Reduce Code Duplication
+    // ==========================================
+    
+    /**
+     * Helper method to find a user by ID or throw an exception if not found.
+     * 
+     * WHY THIS HELPER METHOD?
+     * Before: We had the same code repeated 5 times:
+     *   userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+     * 
+     * After: We call this helper method instead, which:
+     *   1. Makes the code shorter and easier to read
+     *   2. Uses a proper exception type (UserNotFoundException) instead of generic RuntimeException
+     *   3. Makes it easier to change the error message in one place if needed
+     *   4. Reduces the chance of typos in error messages
+     * 
+     * @param id The user ID to look for
+     * @return The User if found
+     * @throws UserNotFoundException if the user doesn't exist
+     */
+    private User findUserByIdOrThrow(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    // ==========================================
+    // PUBLIC SERVICE METHODS
+    // ==========================================
 
     public List<User> findAllUsers() {
         log.debug("Finding all users");
@@ -83,10 +114,8 @@ public class UserService {
     public Page<User> findUsersByRole(UserRole role, Pageable pageable) {
         log.debug("Finding users by role: {} with pagination: {}", role, pageable);
         List<User> allUsers = userRepository.findByRole(role);
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), allUsers.size());
-        List<User> pageContent = allUsers.subList(start, end);
-        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, allUsers.size());
+        // Use our pagination utility instead of repeating the same code
+        return PaginationUtil.paginateList(allUsers, pageable);
     }
 
 
@@ -143,7 +172,8 @@ public class UserService {
     @Transactional
     public void activateUser(UUID id) {
         log.debug("Activating user: {}", id);
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+        // Use our helper method instead of repeating the same code
+        User user = findUserByIdOrThrow(id);
         user.setIsActive(true);
         userRepository.save(user);
     }
@@ -152,7 +182,8 @@ public class UserService {
     @Transactional
     public void deactivateUser(UUID id) {
         log.debug("Deactivating user: {}", id);
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+        // Use our helper method instead of repeating the same code
+        User user = findUserByIdOrThrow(id);
         user.setIsActive(false);
         userRepository.save(user);
     }
@@ -161,7 +192,8 @@ public class UserService {
     @Transactional
     public void changeUserRole(UUID id, UserRole role) {
         log.debug("Changing user role: {} to {}", id, role);
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+        // Use our helper method instead of repeating the same code
+        User user = findUserByIdOrThrow(id);
         user.setRole(role);
         userRepository.save(user);
     }
@@ -170,7 +202,8 @@ public class UserService {
     @Transactional
     public User updateUserPassword(UUID id, String passwordHash) {
         log.debug("Updating user password: {}", id);
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+        // Use our helper method instead of repeating the same code
+        User user = findUserByIdOrThrow(id);
         user.setPasswordHash(passwordHash);
         return userRepository.save(user);
     }
@@ -179,7 +212,8 @@ public class UserService {
     @Transactional
     public User updateUserProfile(UUID id, String name, String phone) {
         log.debug("Updating user profile: {}", id);
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+        // Use our helper method instead of repeating the same code
+        User user = findUserByIdOrThrow(id);
         user.setName(name);
         user.setPhone(phone);
         return userRepository.save(user);
