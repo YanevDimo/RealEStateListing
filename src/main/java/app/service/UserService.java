@@ -28,35 +28,14 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    // ==========================================
-    // HELPER METHODS - Reduce Code Duplication
-    // ==========================================
-    
-    /**
-     * Helper method to find a user by ID or throw an exception if not found.
-     * 
-     * WHY THIS HELPER METHOD?
-     * Before: We had the same code repeated 5 times:
-     *   userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
-     * 
-     * After: We call this helper method instead, which:
-     *   1. Makes the code shorter and easier to read
-     *   2. Uses a proper exception type (UserNotFoundException) instead of generic RuntimeException
-     *   3. Makes it easier to change the error message in one place if needed
-     *   4. Reduces the chance of typos in error messages
-     * 
-     * @param id The user ID to look for
-     * @return The User if found
-     * @throws UserNotFoundException if the user doesn't exist
-     */
+
+
     private User findUserByIdOrThrow(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
 
-    // ==========================================
-    // PUBLIC SERVICE METHODS
-    // ==========================================
+
 
     public List<User> findAllUsers() {
         log.debug("Finding all users");
