@@ -33,10 +33,9 @@ public class AgentRegistrationService {
     private final PropertyUtilityService propertyUtilityService;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Complete agent registration process
-     * Creates both User account and Agent profile
-     */
+     // Complete agent registration process
+     // Creates both User account and Agent profile
+
     public Agent createAgentWithProfile(AgentRegistrationDto registrationDto) {
         log.info("Creating agent with profile for email: {}", registrationDto.getEmail());
 
@@ -81,9 +80,7 @@ public class AgentRegistrationService {
         return savedAgent;
     }
 
-    /**
-     * Create a property for an agent via property-service
-     */
+     // Create a property for an agent via property-service
     public PropertyDto createPropertyForAgent(UUID agentId, PropertyDto propertyDto) {
         log.info("Creating property for agent: {} via property-service", agentId);
 
@@ -151,25 +148,18 @@ public class AgentRegistrationService {
         return savedProperty;
     }
 
-    /**
-     * Get agent with their properties from property-service
-     */
+     // Get agent with their properties from property-service
+
     public Agent getAgentWithProperties(UUID agentId) {
         log.debug("Getting agent with properties for ID: {}", agentId);
         
-        Agent agent = agentService.findAgentById(agentId)
+        return agentService.findAgentById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
-
-        // Properties are now managed in property-service, so we don't load them here
-        // If needed, properties can be fetched via propertyServiceClient.getPropertiesByAgent(agentId)
-        
-        return agent;
     }
 
-    /**
-     * Build PropertyUpdateDto from PropertyDto with fallback logic.
-     * Handles conversions and default values.
-     */
+     // Build PropertyUpdateDto from PropertyDto with fallback logic.
+     // Handles conversions and default values.
+
     public PropertyUpdateDto buildPropertyUpdateDto(PropertyDto propertyDto, PropertyDto existingProperty) {
         return PropertyUpdateDto.builder()
                 .title(propertyDto.getTitle())
@@ -190,9 +180,8 @@ public class AgentRegistrationService {
                 .build();
     }
 
-    /**
-     * Creates both User account and Agent profile with profile picture
-     */
+     //Creates both User account and Agent profile with profile picture
+
     public Agent createAgentWithProfile(AgentRegistrationDto registrationDto, String profilePictureUrl) {
         log.info("Creating agent with profile for email: {} with profile picture: {}", 
                 registrationDto.getEmail(), profilePictureUrl != null ? "Yes" : "No");
@@ -236,18 +225,13 @@ public class AgentRegistrationService {
         log.info("Agent profile created with ID: {}", savedAgent.getId());
 
         // Step 5: Load agent with user for return
-        Agent agentWithUser = agentService.findAgentById(savedAgent.getId())
-                .orElseThrow(() -> new AgentNotFoundException(savedAgent.getId()));
-
         // Properties are now managed in property-service, no need to load them here
-
-        return agentWithUser;
+        return agentService.findAgentById(savedAgent.getId())
+                .orElseThrow(() -> new AgentNotFoundException(savedAgent.getId()));
     }
+     // Update agent profile
 
-    /**
-     * Update agent profile
-     */
-    public Agent updateAgentProfile(UUID agentId, AgentRegistrationDto updateDto) {
+    public void updateAgentProfile(UUID agentId, AgentRegistrationDto updateDto) {
         log.info("Updating agent profile for ID: {}", agentId);
 
         Agent agent = agentService.findAgentById(agentId)
@@ -282,7 +266,6 @@ public class AgentRegistrationService {
 
         log.info("Agent profile updated for ID: {}", agentId);
 
-        return updatedAgent;
     }
 
     /**

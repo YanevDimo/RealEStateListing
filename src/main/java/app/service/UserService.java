@@ -7,6 +7,7 @@ import app.exception.UserNotFoundException;
 import app.repository.UserRepository;
 import app.util.PaginationUtil;
 import lombok.Data;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -93,7 +94,6 @@ public class UserService {
     public Page<User> findUsersByRole(UserRole role, Pageable pageable) {
         log.debug("Finding users by role: {} with pagination: {}", role, pageable);
         List<User> allUsers = userRepository.findByRole(role);
-        // Use our pagination utility instead of repeating the same code
         return PaginationUtil.paginateList(allUsers, pageable);
     }
 
@@ -151,7 +151,6 @@ public class UserService {
     @Transactional
     public void activateUser(UUID id) {
         log.debug("Activating user: {}", id);
-        // Use our helper method instead of repeating the same code
         User user = findUserByIdOrThrow(id);
         user.setIsActive(true);
         userRepository.save(user);
@@ -161,7 +160,6 @@ public class UserService {
     @Transactional
     public void deactivateUser(UUID id) {
         log.debug("Deactivating user: {}", id);
-        // Use our helper method instead of repeating the same code
         User user = findUserByIdOrThrow(id);
         user.setIsActive(false);
         userRepository.save(user);
@@ -191,7 +189,7 @@ public class UserService {
     @Transactional
     public User updateUserProfile(UUID id, String name, String phone) {
         log.debug("Updating user profile: {}", id);
-        // Use our helper method instead of repeating the same code
+        // Use helper method instead of repeating the same code
         User user = findUserByIdOrThrow(id);
         user.setName(name);
         user.setPhone(phone);
@@ -230,6 +228,7 @@ public class UserService {
     }
 
 
+    @Getter
     public static class UserStatistics {
         private final long totalUsers;
         private final long activeUsers;
@@ -243,10 +242,6 @@ public class UserService {
             this.totalAdmins = totalAdmins;
         }
 
-        public long getTotalUsers() { return totalUsers; }
-        public long getActiveUsers() { return activeUsers; }
-        public long getTotalAgents() { return totalAgents; }
-        public long getTotalAdmins() { return totalAdmins; }
     }
 }
 
