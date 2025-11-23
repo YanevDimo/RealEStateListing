@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment and Configuration ###
+.env
+.env.local
+.env.*.local
+application-local.properties
+application-prod.properties
+
+### Uploads Directory ###
+uploads/
+!uploads/.gitkeep
