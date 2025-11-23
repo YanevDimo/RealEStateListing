@@ -18,7 +18,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
-public class PropertyTypeService {
+    public class PropertyTypeService {
 
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyUtilityService propertyUtilityService;

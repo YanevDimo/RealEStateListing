@@ -9,15 +9,18 @@ Before running this application, ensure you have the following installed:
 ### Required Software
 
 1. **Java Development Kit (JDK) 17**
+
    - Download from: https://adoptium.net/ or https://www.oracle.com/java/technologies/downloads/#java17
    - Verify installation: `java -version` (should show version 17.x.x)
 
 2. **Apache Maven 3.6+**
+
    - Download from: https://maven.apache.org/download.cgi
    - Verify installation: `mvn -version`
    - Note: The project includes Maven Wrapper (`mvnw`/`mvnw.cmd`), so Maven installation is optional
 
 3. **MySQL Database 8.0+**
+
    - Download from: https://dev.mysql.com/downloads/mysql/
    - Create a database named `real_estate_hub` (or configure in `application.properties`)
    - The application will auto-create the database if `createDatabaseIfNotExist=true` is set
@@ -76,6 +79,7 @@ property.service.url=http://localhost:8083
 ```
 
 Or set as environment variable:
+
 ```bash
 export PROPERTY_SERVICE_URL=http://localhost:8083
 ```
@@ -134,15 +138,15 @@ java -jar target/RealEstateListingAppDemo-0.0.1-SNAPSHOT.jar
 
 Key configuration in `src/main/resources/application.properties`:
 
-| Property | Description | Default |
-|----------|-------------|---------|
-| `server.port` | Application port | 8080 |
-| `spring.datasource.url` | MySQL connection URL | `jdbc:mysql://localhost:3306/real_estate_hub` |
-| `spring.datasource.username` | Database username | `root` (or `DB_USERNAME` env var) |
-| `spring.datasource.password` | Database password | `770329` (or `DB_PASSWORD` env var) |
-| `property.service.url` | Property service URL | `http://localhost:8083` |
-| `app.upload.dir` | File upload directory | `uploads` |
-| `spring.jpa.hibernate.ddl-auto` | Database schema strategy | `update` |
+| Property                        | Description              | Default                                       |
+| ------------------------------- | ------------------------ | --------------------------------------------- |
+| `server.port`                   | Application port         | 8080                                          |
+| `spring.datasource.url`         | MySQL connection URL     | `jdbc:mysql://localhost:3306/real_estate_hub` |
+| `spring.datasource.username`    | Database username        | `root` (or `DB_USERNAME` env var)             |
+| `spring.datasource.password`    | Database password        | `770329` (or `DB_PASSWORD` env var)           |
+| `property.service.url`          | Property service URL     | `http://localhost:8083`                       |
+| `app.upload.dir`                | File upload directory    | `uploads`                                     |
+| `spring.jpa.hibernate.ddl-auto` | Database schema strategy | `update`                                      |
 
 ### Environment Variables
 
@@ -212,11 +216,13 @@ The application uses `spring.jpa.hibernate.ddl-auto=update`, which automatically
 ### Manual Setup (Optional)
 
 1. Create database:
+
 ```sql
 CREATE DATABASE real_estate_hub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 2. Grant privileges:
+
 ```sql
 GRANT ALL PRIVILEGES ON real_estate_hub.* TO 'your_username'@'localhost';
 FLUSH PRIVILEGES;
@@ -252,20 +258,24 @@ Run tests with:
 ### Common Issues
 
 1. **Database Connection Error**
+
    - Verify MySQL is running: `mysql -u root -p`
    - Check database credentials in `application.properties`
    - Ensure database `real_estate_hub` exists or can be created
 
 2. **Property Service Connection Error**
+
    - Verify property-service is running on port 8083
    - Check `property.service.url` configuration
    - Check network connectivity to property-service
 
 3. **Port Already in Use**
+
    - Change port in `application.properties`: `server.port=8081`
    - Or stop the process using port 8080
 
 4. **File Upload Errors**
+
    - Ensure `uploads/` directory exists and is writable
    - Check file size limits in `application.properties`
 
@@ -299,7 +309,3 @@ Run tests with:
 For issues and questions, please open an issue in the repository.
 
 ---
-
-
-
-

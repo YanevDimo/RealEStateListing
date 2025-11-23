@@ -28,9 +28,8 @@ public class FileUploadService {
             "jpg", "jpeg", "png", "gif", "webp"
     );
 
-    /**
-     * Upload multiple files and return their URLs
-     */
+      //Upload multiple files and return their URLs
+
     public List<String> uploadFiles(List<MultipartFile> files) throws IOException {
         List<String> uploadedUrls = new ArrayList<>();
         
@@ -56,9 +55,8 @@ public class FileUploadService {
         return uploadedUrls;
     }
 
-    /**
-     * Upload a single file and return its URL
-     */
+     // Upload a single file and return its URL
+
     public String uploadFile(MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             return null;
@@ -96,9 +94,7 @@ public class FileUploadService {
         return fileUrl;
     }
 
-    /**
-     * Delete a file by URL
-     */
+
     public boolean deleteFile(String fileUrl) {
         try {
             if (fileUrl == null || !fileUrl.startsWith("/uploads/")) {
@@ -121,17 +117,13 @@ public class FileUploadService {
         }
     }
 
-    /**
-     * Check if file extension is allowed
-     */
+
     private boolean isValidFileExtension(String filename) {
         String extension = getFileExtension(filename).toLowerCase();
         return ALLOWED_EXTENSIONS.contains(extension);
     }
 
-    /**
-     * Get file extension from filename
-     */
+
     private String getFileExtension(String filename) {
         int lastDotIndex = filename.lastIndexOf('.');
         if (lastDotIndex > 0 && lastDotIndex < filename.length() - 1) {
@@ -140,16 +132,14 @@ public class FileUploadService {
         return "";
     }
 
-    /**
-     * Get upload directory path
-     */
+
+     // Get upload directory path
+
     public String getUploadDir() {
         return uploadDir;
     }
 
-    /**
-     * Get maximum file size
-     */
+
     public long getMaxFileSize() {
         return maxFileSize;
     }
