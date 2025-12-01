@@ -97,7 +97,7 @@ public class SearchService {
             return title.contains(searchTerm) || description.contains(searchTerm);
         }
         
-        // If we got here, the property matches all the criteria
+
         return true;
     }
 
@@ -142,11 +142,12 @@ public class SearchService {
             final UUID finalPropertyTypeId = null; // Already filtered by API
             final Double finalMaxPrice = null; // Already filtered by API
             final boolean includeSearchTerm = false; // Already filtered by API
-            
+
+            assert properties != null;
             return properties.stream()
-                    .filter(property -> matchesFilterCriteria(property, criteria, 
-                                                              finalCityId, finalPropertyTypeId, 
-                                                              finalMaxPrice, includeSearchTerm))
+                    .filter(property -> matchesFilterCriteria(property, criteria,
+                            null, null,
+                            null, includeSearchTerm))
                     .collect(Collectors.toList());
         } catch (FeignException e) {
             log.error("Error calling property-service for search: Status {} - {}", e.status(), e.getMessage());
@@ -296,32 +297,6 @@ public class SearchService {
         return propertyUtilityService.getAllProperties().stream()
                 .filter(p -> p.getBeds() != null && p.getBeds() >= beds)
                 .collect(Collectors.toList());
-    }
-
-
-    public List<PropertyDto> getPropertiesByBaths(Integer baths) {
-        log.debug("Getting properties by baths: {}", baths);
-        return propertyUtilityService.getAllProperties().stream()
-                .filter(p -> p.getBaths() != null && p.getBaths() >= baths)
-                .collect(Collectors.toList());
-    }
-
-
-    public List<PropertyDto> getPropertiesByAreaRange(BigDecimal minArea, BigDecimal maxArea) {
-        log.debug("Getting properties by area range: {} - {}", minArea, maxArea);
-        return propertyUtilityService.getAllProperties().stream()
-                .filter(property -> {
-                    if (minArea != null && (property.getAreaSqm() == null || property.getAreaSqm().compareTo(minArea) < 0)) return false;
-                    return maxArea == null || (property.getAreaSqm() != null && property.getAreaSqm().compareTo(maxArea) <= 0);
-                })
-                .collect(Collectors.toList());
-    }
-
-
-    public List<PropertyDto> getPropertiesNearLocation(BigDecimal latitude, BigDecimal longitude, Double radiusKm) {
-        log.debug("Getting properties near location: {}, {} within {} km", latitude, longitude, radiusKm);
-        // Note: Property-service doesn't have location-based search yet, returning empty for now
-        return List.of();
     }
 
 

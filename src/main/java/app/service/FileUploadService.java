@@ -21,14 +21,12 @@ public class FileUploadService {
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
-    @Value("${app.upload.max-size:10485760}") // 10MB default
+    @Value("${app.upload.max-size:10485760}")
     private long maxFileSize;
 
     private static final List<String> ALLOWED_EXTENSIONS = List.of(
             "jpg", "jpeg", "png", "gif", "webp"
     );
-
-      //Upload multiple files and return their URLs
 
     public List<String> uploadFiles(List<MultipartFile> files) throws IOException {
         List<String> uploadedUrls = new ArrayList<>();
@@ -37,7 +35,6 @@ public class FileUploadService {
             return uploadedUrls;
         }
 
-        // Create upload directory if it doesn't exist
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -55,39 +52,31 @@ public class FileUploadService {
         return uploadedUrls;
     }
 
-     // Upload a single file and return its URL
-
     public String uploadFile(MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             return null;
         }
 
-        // Validate file size
         if (file.getSize() > maxFileSize) {
             throw new IllegalArgumentException("File size exceeds maximum allowed size of " + maxFileSize + " bytes");
         }
 
-        // Validate file extension
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || !isValidFileExtension(originalFilename)) {
             throw new IllegalArgumentException("Invalid file type. Allowed types: " + ALLOWED_EXTENSIONS);
         }
 
-        // Generate unique filename
         String fileExtension = getFileExtension(originalFilename);
         String uniqueFilename = UUID.randomUUID().toString() + "." + fileExtension;
 
-        // Create upload path
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
 
-        // Save file
         Path targetPath = uploadPath.resolve(uniqueFilename);
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-        // Return URL path
         String fileUrl = "/uploads/" + uniqueFilename;
         log.info("File uploaded successfully: {}", fileUrl);
         
@@ -132,9 +121,6 @@ public class FileUploadService {
         return "";
     }
 
-
-     // Get upload directory path
-
     public String getUploadDir() {
         return uploadDir;
     }
@@ -144,14 +130,5 @@ public class FileUploadService {
         return maxFileSize;
     }
 }
-
-
-
-
-
-
-
-
-
 
 

@@ -296,17 +296,7 @@ Run tests with:
 - Configure proper security settings for production
 - Review Spring Security configuration in `SecurityConfig.java`
 
-## 📄 License
+#
 
-[Add your license information here]
 
-## 👥 Contributors
-
-[Add contributor information here]
-
-## 📞 Support
-
-For issues and questions, please open an issue in the repository.
-
----
 

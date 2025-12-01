@@ -20,7 +20,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = {"agent", "inquiries", "favorites"})
+@ToString(exclude = {"agent", "inquiries"})
 public class User {
 
     @Id
@@ -63,16 +63,11 @@ public class User {
     @Builder.Default
     private Boolean isActive = true;
 
-    // Relationships
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Agent agent;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Inquiry> inquiries = new ArrayList<>();
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<Favorite> favorites = new ArrayList<>();
 
 }

@@ -78,8 +78,8 @@ public class PropertyRestController {
         return ResponseEntity.noContent().build();
     }
     
-    // Note: Create, Update, and Toggle Featured operations 
+    // Create, Update, and Toggle Featured operations
     // should be handled directly by property-service
-    // These endpoints are not proxied to avoid duplication
+
 }
 

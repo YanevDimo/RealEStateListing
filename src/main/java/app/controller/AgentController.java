@@ -162,7 +162,7 @@ public class AgentController {
         ModelAndView modelAndView = new ModelAndView("agent/add-property");
         
         modelAndView.addObject("propertyDto", new PropertyDto());
-        // Cities and propertyTypes are automatically added by @ModelAttribute
+        // Cities and propertyTypes are automatically added by ModelAttribute
         
         return modelAndView;
     }
@@ -183,7 +183,7 @@ public class AgentController {
             log.warn("Property validation errors: {}", bindingResult.getAllErrors());
             ModelAndView modelAndView = new ModelAndView("agent/add-property");
             modelAndView.addObject("propertyDto", propertyDto);
-            // Cities and propertyTypes are automatically added by @ModelAttribute
+            // Cities and propertyTypes are automatically added by ModelAttribute
             return modelAndView;
         }
 
@@ -552,7 +552,7 @@ public class AgentController {
                     .orElseThrow(() -> new InquiryNotFoundException(id));
 
             // Verify inquiry belongs to agent's property using our helper method
-            if (!verifyPropertyBelongsToAgent(agent.getId(), inquiry.getPropertyId())) {
+            if (verifyPropertyBelongsToAgent(agent.getId(), inquiry.getPropertyId())) {
                 modelAndView.addObject("error", "You don't have permission to view this inquiry");
                 return modelAndView;
             }
@@ -593,7 +593,7 @@ public class AgentController {
                     .orElseThrow(() -> new InquiryNotFoundException(id));
 
             // Verify inquiry belongs to agent's property using our helper method
-            if (!verifyPropertyBelongsToAgent(agent.getId(), inquiry.getPropertyId())) {
+            if (verifyPropertyBelongsToAgent(agent.getId(), inquiry.getPropertyId())) {
                 redirectAttributes.addFlashAttribute("errorMessage", "You don't have permission to update this inquiry");
                 return "redirect:/agent/inquiries";
             }
@@ -612,82 +612,28 @@ public class AgentController {
         }
     }
 
-    // ============================================
-    // @ModelAttribute METHODS
-    // Automatically add cities and propertyTypes to all views
-    // ============================================
 
-    /**
-     * Automatically adds cities to every ModelAndView in this controller.
-     * Spring calls this method before each request handler.
-     * No need to manually add cities anymore!
-     */
     @ModelAttribute("cities")
     public List<City> getCities() {
         return cityService.findAllCities();
     }
 
-    /**
-     * Automatically adds property types to every ModelAndView in this controller.
-     * Spring calls this method before each request handler.
-     * No need to manually add propertyTypes anymore!
-     */
+
     @ModelAttribute("propertyTypes")
     public List<PropertyType> getPropertyTypes() {
         return propertyTypeService.findAllPropertyTypes();
     }
 
-    // ============================================
-    // HELPER METHODS
-    // Reusable methods to eliminate duplicate code
-    // ============================================
-
-    /**
-     * Helper method to get the current logged-in agent.
-     * This method is used by many other methods in this controller.
-     * 
-     * @param authentication - The Spring Security authentication object
-     * @return Agent - The agent profile of the current user
-     * @throws UserNotFoundException - If user is not found
-     * @throws AgentNotFoundException - If agent profile is not found
-     */
-    /**
-     * Helper method to verify if an inquiry belongs to an agent's property.
-     * 
-     * WHY THIS HELPER METHOD?
-     * Before: We had the same verification code repeated 2 times:
-     *   List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agent.getId());
-     *   boolean belongsToAgent = agentProperties.stream()
-     *       .anyMatch(p -> p.getId().equals(inquiry.getPropertyId()));
-     * 
-     * After: We call this helper method instead, which:
-     *   1. Makes the code shorter and easier to read
-     *   2. If we need to change how verification works, we only change it in one place
-     *   3. Reduces the chance of bugs from having different versions of the same logic
-     *   4. Makes it easier to test the verification logic separately
-     * 
-     * @param agentId The ID of the agent to check
-     * @param propertyId The ID of the property to verify
-     * @return true if the property belongs to the agent, false otherwise
-     */
     private boolean verifyPropertyBelongsToAgent(UUID agentId, UUID propertyId) {
         // Get all properties owned by this agent
         List<PropertyDto> agentProperties = propertyUtilityService.getPropertiesByAgent(agentId);
         
         // Check if any of the agent's properties match the property ID we're looking for
         return agentProperties.stream()
-                .anyMatch(p -> p.getId().equals(propertyId));
+                .noneMatch(p -> p.getId().equals(propertyId));
     }
 
-    /**
-     * Helper method to get the current logged-in agent.
-     * This method is used by many other methods in this controller.
-     * 
-     * @param authentication - The Spring Security authentication object
-     * @return Agent - The agent profile of the current user
-     * @throws UserNotFoundException - If user is not found
-     * @throws AgentNotFoundException - If agent profile is not found
-     */
+
     private Agent getCurrentAgent(Authentication authentication) {
         // Get the email from the authentication object
         String email = authentication.getName();
@@ -701,14 +647,6 @@ public class AgentController {
                 .orElseThrow(() -> new AgentNotFoundException("Agent profile not found"));
     }
 
-    /**
-     * Helper method to create an error ModelAndView for the add property form.
-     * This is used when there's an error and we need to show the form again with an error message.
-     * 
-     * @param propertyDto - The property data that was submitted (to show in form again)
-     * @param errorMessage - The error message to display to the user
-     * @return ModelAndView - The error page with all necessary data
-     */
     private ModelAndView createAddPropertyErrorModel(PropertyDto propertyDto, String errorMessage) {
         ModelAndView modelAndView = new ModelAndView("agent/add-property");
         modelAndView.addObject("propertyDto", propertyDto);
@@ -717,17 +655,6 @@ public class AgentController {
         return modelAndView;
     }
 
-    /**
-     * Helper method to verify that an agent owns a property.
-     * This prevents agents from editing/deleting properties they don't own.
-     * 
-     * @param propertyId - The ID of the property to check
-     * @param agentId - The ID of the agent who should own the property
-     * @param action - The action being attempted (e.g., "edit", "delete")
-     * @return PropertyDto - The property if ownership is verified
-     * @throws PropertyNotFoundException - If property doesn't exist
-     * @throws ApplicationException - If agent doesn't own the property
-     */
     private PropertyDto verifyPropertyOwnership(UUID propertyId, UUID agentId, String action) {
         PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
         if (property == null) {

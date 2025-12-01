@@ -25,35 +25,10 @@ public class InquiryService {
     private final InquiryRepository inquiryRepository;
     private final UserService userService;
 
-    // ==========================================
-    // HELPER METHODS - Reduce Code Duplication
-    // ==========================================
-    
-    /**
-     * Helper method to find an inquiry by ID or throw an exception if not found.
-     * 
-     * WHY THIS HELPER METHOD?
-     * Before: We had the same code repeated 3 times:
-     *   inquiryRepository.findById(id).orElseThrow(() -> new RuntimeException("Inquiry not found with ID: " + id));
-     * 
-     * After: We call this helper method instead, which:
-     *   1. Makes the code shorter and easier to read
-     *   2. Uses a proper exception type (InquiryNotFoundException) instead of generic RuntimeException
-     *   3. Makes it easier to change the error message in one place if needed
-     *   4. Reduces the chance of typos in error messages
-     * 
-     * @param id The inquiry ID to look for
-     * @return The Inquiry if found
-     * @throws InquiryNotFoundException if the inquiry doesn't exist
-     */
     private Inquiry findInquiryByIdOrThrow(UUID id) {
         return inquiryRepository.findById(id)
                 .orElseThrow(() -> new InquiryNotFoundException(id));
     }
-
-    // ==========================================
-    // PUBLIC SERVICE METHODS
-    // ==========================================
 
     @Transactional
     public void createInquiry(InquiryDto inquiryDto, UUID propertyId, Authentication authentication) {
@@ -106,7 +81,6 @@ public class InquiryService {
     @Transactional
     public Inquiry updateInquiryStatus(UUID id, InquiryStatus status) {
         log.info("Updating inquiry {} status to {}", id, status);
-        // Use our helper method instead of repeating the same code
         Inquiry inquiry = findInquiryByIdOrThrow(id);
         inquiry.setStatus(status);
         return inquiryRepository.save(inquiry);
@@ -115,7 +89,6 @@ public class InquiryService {
     @Transactional
     public Inquiry addResponse(UUID id, String response) {
         log.info("Adding response to inquiry: {}", id);
-        // Use our helper method instead of repeating the same code
         Inquiry inquiry = findInquiryByIdOrThrow(id);
         inquiry.setResponse(response);
         if (inquiry.getStatus() == InquiryStatus.NEW) {
@@ -144,7 +117,6 @@ public class InquiryService {
     @Transactional
     public void updateInquiry(UUID id, InquiryStatus status, String response) {
         log.info("Updating inquiry {} with status: {} and response", id, status);
-        // Use our helper method instead of repeating the same code
         Inquiry inquiry = findInquiryByIdOrThrow(id);
         
         if (status != null) {

@@ -33,13 +33,9 @@ public class AgentRegistrationService {
     private final PropertyUtilityService propertyUtilityService;
     private final PasswordEncoder passwordEncoder;
 
-     // Complete agent registration process
-     // Creates both User account and Agent profile
-
     public Agent createAgentWithProfile(AgentRegistrationDto registrationDto) {
         log.info("Creating agent with profile for email: {}", registrationDto.getEmail());
 
-        // Step 1: Validate email uniqueness
         if (userService.userExistsByEmail(registrationDto.getEmail())) {
             throw new DuplicateEmailException(registrationDto.getEmail());
         }
@@ -55,14 +51,13 @@ public class AgentRegistrationService {
                 .email(registrationDto.getEmail())
                 .passwordHash(passwordEncoder.encode(registrationDto.getPassword()))
                 .phone(registrationDto.getPhone())
-                .role(UserRole.AGENT)  // Set as AGENT
+                .role(UserRole.AGENT)
                 .isActive(true)
                 .build();
 
         User savedUser = userService.saveUser(user);
         log.info("User account created with ID: {}", savedUser.getId());
 
-        // Step 4: Create Agent profile
         Agent agent = Agent.builder()
                 .user(savedUser)
                 .licenseNumber(registrationDto.getLicenseNumber())
@@ -80,23 +75,18 @@ public class AgentRegistrationService {
         return savedAgent;
     }
 
-     // Create a property for an agent via property-service
     public PropertyDto createPropertyForAgent(UUID agentId, PropertyDto propertyDto) {
         log.info("Creating property for agent: {} via property-service", agentId);
 
-        // Validate agent exists
         agentService.findAgentById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
 
-        // Validate property type exists
         propertyTypeService.findPropertyTypeById(propertyDto.getPropertyTypeId())
                 .orElseThrow(() -> new PropertyTypeNotFoundException(propertyDto.getPropertyTypeId()));
 
-        // Validate city exists
         cityService.findCityById(propertyDto.getCityId())
                 .orElseThrow(() -> new CityNotFoundException(propertyDto.getCityId()));
 
-        // Convert PropertyDto to PropertyCreateDto for property-service
         PropertyCreateDto createDto = PropertyCreateDto.builder()
                 .title(propertyDto.getTitle())
                 .description(propertyDto.getDescription())
@@ -113,10 +103,9 @@ public class AgentRegistrationService {
                            (propertyDto.getAreaSqm() != null ? propertyDto.getAreaSqm().intValue() : null))
                 .address(propertyDto.getAddress())
                 .features(propertyDto.getFeatures())
-                .imageUrls(propertyDto.getImageUrls()) // Include image URLs from uploaded images
+                .imageUrls(propertyDto.getImageUrls())
                 .build();
 
-        // Create property via property-service
         log.info("Sending property creation request to Property Service with DTO: {}", createDto);
         log.info("Image URLs being sent: {}", createDto.getImageUrls());
         if (createDto.getImageUrls() == null || createDto.getImageUrls().isEmpty()) {
@@ -139,16 +128,12 @@ public class AgentRegistrationService {
         log.info("Property created successfully via Property Service with ID: {} for agent: {}", 
                 savedProperty.getId(), agentId);
         
-        // Evict allProperties cache to reflect the new property
         propertyUtilityService.evictAllPropertiesCache();
         
-        // Update agent's listing count (increment by 1)
         agentService.incrementAgentListings(agentId);
         
         return savedProperty;
     }
-
-     // Get agent with their properties from property-service
 
     public Agent getAgentWithProperties(UUID agentId) {
         log.debug("Getting agent with properties for ID: {}", agentId);
@@ -157,15 +142,12 @@ public class AgentRegistrationService {
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
     }
 
-     // Build PropertyUpdateDto from PropertyDto with fallback logic.
-     // Handles conversions and default values.
-
     public PropertyUpdateDto buildPropertyUpdateDto(PropertyDto propertyDto, PropertyDto existingProperty) {
         return PropertyUpdateDto.builder()
                 .title(propertyDto.getTitle())
                 .description(propertyDto.getDescription())
                 .price(propertyDto.getPrice())
-                .agentId(existingProperty.getAgentId()) // Keep same agent
+                .agentId(existingProperty.getAgentId())
                 .cityId(propertyDto.getCityId())
                 .propertyTypeId(propertyDto.getPropertyTypeId())
                 .status(propertyDto.getStatus() != null ? propertyDto.getStatus() : existingProperty.getStatus())
@@ -180,13 +162,10 @@ public class AgentRegistrationService {
                 .build();
     }
 
-     //Creates both User account and Agent profile with profile picture
-
     public Agent createAgentWithProfile(AgentRegistrationDto registrationDto, String profilePictureUrl) {
         log.info("Creating agent with profile for email: {} with profile picture: {}", 
                 registrationDto.getEmail(), profilePictureUrl != null ? "Yes" : "No");
 
-        // Step 1: Validate email uniqueness
         if (userService.userExistsByEmail(registrationDto.getEmail())) {
             throw new DuplicateEmailException(registrationDto.getEmail());
         }
@@ -209,7 +188,6 @@ public class AgentRegistrationService {
         User savedUser = userService.saveUser(user);
         log.info("User created with ID: {}", savedUser.getId());
 
-        // Step 4: Create Agent profile
         Agent agent = Agent.builder()
                 .user(savedUser)
                 .licenseNumber(registrationDto.getLicenseNumber())
@@ -218,18 +196,15 @@ public class AgentRegistrationService {
                 .specializations(formatSpecializationsAsJson(registrationDto.getSpecializations()))
                 .rating(BigDecimal.ZERO)
                 .totalListings(0)
-                .profilePictureUrl(profilePictureUrl) // Add profile picture URL
+                .profilePictureUrl(profilePictureUrl)
                 .build();
 
         Agent savedAgent = agentService.saveAgent(agent);
         log.info("Agent profile created with ID: {}", savedAgent.getId());
 
-        // Step 5: Load agent with user for return
-        // Properties are now managed in property-service, no need to load them here
         return agentService.findAgentById(savedAgent.getId())
                 .orElseThrow(() -> new AgentNotFoundException(savedAgent.getId()));
     }
-     // Update agent profile
 
     public void updateAgentProfile(UUID agentId, AgentRegistrationDto updateDto) {
         log.info("Updating agent profile for ID: {}", agentId);
@@ -237,7 +212,6 @@ public class AgentRegistrationService {
         Agent agent = agentService.findAgentById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId));
 
-        // Update agent fields
         if (updateDto.getBio() != null) {
             agent.setBio(updateDto.getBio());
         }
@@ -251,16 +225,14 @@ public class AgentRegistrationService {
             agent.setLicenseNumber(updateDto.getLicenseNumber());
         }
 
-        // Update user fields
         User user = agent.getUser();
         if (updateDto.getName() != null && !updateDto.getName().trim().isEmpty()) {
             user.setName(updateDto.getName());
         }
         if (updateDto.getPhone() != null) {
-            user.setPhone(updateDto.getPhone().trim().isEmpty() ? null : updateDto.getPhone());
+                user.setPhone(updateDto.getPhone().trim().isEmpty() ? null : updateDto.getPhone());
         }
 
-        // Save updates
         userService.updateUser(user);
         Agent updatedAgent = agentService.updateAgent(agent);
 
@@ -268,47 +240,11 @@ public class AgentRegistrationService {
 
     }
 
-    /**
-     * Delete agent and all their properties
-     * Note: Properties are managed in property-service, 
-     * so property deletion should be handled there or via API calls
-     */
-    public void deleteAgentAndProperties(UUID agentId) {
-        log.info("Deleting agent and properties for ID: {}", agentId);
-
-        Agent agent = agentService.findAgentById(agentId)
-                .orElseThrow(() -> new AgentNotFoundException(agentId));
-
-        // Get all properties for this agent from property-service
-        try {
-            List<PropertyDto> properties = propertyServiceClient.getPropertiesByAgent(agentId);
-            log.warn("Agent {} has {} properties in property-service. " +
-                    "These should be deleted via property-service API.", 
-                    agentId, properties.size());
-            // Note: Property deletion should be handled by property-service
-            // or via direct API calls to property-service delete endpoints
-        } catch (Exception e) {
-            log.error("Error fetching properties for agent {} from property-service", agentId, e);
-        }
-
-        // Delete agent profile
-        agentService.deleteAgent(agentId);
-
-        // Delete user account
-        userService.deleteUser(agent.getUser().getId());
-
-        log.info("Agent deleted for ID: {}. Note: Properties in property-service may need separate cleanup.", agentId);
-    }
-
-    /**
-     * Format specializations string as JSON array
-     */
     private String formatSpecializationsAsJson(String specializations) {
         if (specializations == null || specializations.trim().isEmpty()) {
             return "[]";
         }
         
-        // Split by comma and clean up each specialization
         String[] specs = specializations.split(",");
         StringBuilder jsonBuilder = new StringBuilder("[");
         boolean first = true;
@@ -319,7 +255,6 @@ public class AgentRegistrationService {
                 if (!first) {
                     jsonBuilder.append(",");
                 }
-                // Escape quotes and backslashes in JSON
                 String escaped = trimmed.replace("\\", "\\\\").replace("\"", "\\\"");
                 jsonBuilder.append("\"").append(escaped).append("\"");
                 first = false;

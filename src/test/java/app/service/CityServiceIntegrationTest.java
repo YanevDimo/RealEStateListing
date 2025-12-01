@@ -50,7 +50,7 @@ class CityServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Initialize service manually since @DataJpaTest doesn't load services
+        // Initialize service manually since DataJpaTest doesn't load services
         cityService = new CityService(cityRepository, propertyUtilityService);
         
         // Clear database before each test

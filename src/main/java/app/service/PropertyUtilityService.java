@@ -13,9 +13,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
- // Utility service for common property operations to reduce code duplication.
- //Provides cached and optimized methods for property-related operations.
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,10 +20,6 @@ public class PropertyUtilityService {
 
     private final PropertyServiceClient propertyServiceClient;
 
-    /**
-     * Get all properties with caching to avoid repeated calls.
-     * This replaces multiple calls to getAllProperties(null, null, null, null)
-     */
     @Cacheable(value = "allProperties", unless = "#result == null or #result.isEmpty()")
     public List<PropertyDto> getAllProperties() {
         log.debug("Fetching all properties from property-service");
@@ -46,16 +39,10 @@ public class PropertyUtilityService {
         }
     }
 
-
-     // Check if a property is active
-
     public boolean isActiveProperty(PropertyDto property) {
         return property != null && 
                (property.getStatus() == null || "ACTIVE".equals(property.getStatus()));
     }
-
-
-     // Filter properties to only include active ones
 
     public List<PropertyDto> filterActiveProperties(List<PropertyDto> properties) {
         if (properties == null) {
@@ -65,9 +52,6 @@ public class PropertyUtilityService {
                 .filter(this::isActiveProperty)
                 .collect(Collectors.toList());
     }
-
-
-     // Get active properties matching a city ID
 
     public List<PropertyDto> getActivePropertiesByCityId(UUID cityId) {
         if (cityId == null) {
@@ -79,8 +63,6 @@ public class PropertyUtilityService {
                 .collect(Collectors.toList());
     }
 
-     // Get active properties matching an agent ID
-
     public List<PropertyDto> getActivePropertiesByAgentId(UUID agentId) {
         if (agentId == null) {
             return List.of();
@@ -90,9 +72,6 @@ public class PropertyUtilityService {
                 .filter(this::isActiveProperty)
                 .collect(Collectors.toList());
     }
-
-
-     // Get active properties matching a property type ID
 
     public List<PropertyDto> getActivePropertiesByPropertyTypeId(UUID propertyTypeId) {
         if (propertyTypeId == null) {
@@ -104,56 +83,30 @@ public class PropertyUtilityService {
                 .collect(Collectors.toList());
     }
 
-
-     // Check if a city has any active properties
-
     public boolean hasActiveProperties(UUID cityId) {
         return !getActivePropertiesByCityId(cityId).isEmpty();
     }
-
-
-     // Check if an agent has any active properties
 
     public boolean agentHasActiveProperties(UUID agentId) {
         return !getActivePropertiesByAgentId(agentId).isEmpty();
     }
 
-
-     // Check if a property type has any active properties
-
     public boolean propertyTypeHasActiveProperties(UUID propertyTypeId) {
         return !getActivePropertiesByPropertyTypeId(propertyTypeId).isEmpty();
     }
-
-
-     // Count active properties for a city
 
     public long countActivePropertiesByCityId(UUID cityId) {
         return getActivePropertiesByCityId(cityId).size();
     }
 
-
-     // Count active properties for an agent
-
     public long countActivePropertiesByAgentId(UUID agentId) {
         return getActivePropertiesByAgentId(agentId).size();
     }
-
-
-     // Count active properties for a property type
 
     public long countActivePropertiesByPropertyTypeId(UUID propertyTypeId) {
         return getActivePropertiesByPropertyTypeId(propertyTypeId).size();
     }
 
-    /**
-     * Get properties by agent ID with fallback handling for 500 errors.
-     * If the getPropertiesByAgent endpoint returns 500 (Hibernate bug), 
-     * falls back to getAllProperties() and filters by agentId in memory.
-     * 
-     * @param agentId The agent ID
-     * @return List of properties for the agent (all statuses, not just active)
-     */
     public List<PropertyDto> getPropertiesByAgent(UUID agentId) {
         if (agentId == null) {
             return List.of();
@@ -168,7 +121,6 @@ public class PropertyUtilityService {
         } catch (FeignException e) {
             log.error("Error fetching properties for agent {}: Status {} - {}", agentId, e.status(), e.getMessage());
             
-            // If it's a 500 error (Hibernate bug), try fallback to getAllProperties() and filter in memory
             if (e.status() == 500) {
                 log.warn("Property-service getPropertiesByAgent returned 500 error (Hibernate MultipleBagFetchException). " +
                         "Attempting fallback to getAllProperties() with in-memory filtering");
@@ -197,11 +149,6 @@ public class PropertyUtilityService {
         }
     }
 
-    /**
-     * Evict the allProperties cache.
-     * This should be called after creating, updating, or deleting a property
-     * to ensure the cache reflects the current state.
-     */
     @CacheEvict(value = "allProperties", allEntries = true)
     public void evictAllPropertiesCache() {
         log.debug("Evicting allProperties cache");
