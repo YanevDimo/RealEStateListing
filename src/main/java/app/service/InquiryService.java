@@ -1,13 +1,18 @@
 package app.service;
 
+import app.client.PropertyServiceClient;
 import app.dto.InquiryDto;
+import app.dto.PropertyDto;
+import app.entity.Agent;
 import app.entity.Inquiry;
 import app.entity.InquiryStatus;
 import app.entity.User;
+import app.event.InquiryCreatedEvent;
 import app.exception.InquiryNotFoundException;
 import app.repository.InquiryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +29,9 @@ public class InquiryService {
 
     private final InquiryRepository inquiryRepository;
     private final UserService userService;
+    private final PropertyServiceClient propertyServiceClient;
+    private final AgentService agentService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Inquiry findInquiryByIdOrThrow(UUID id) {
         return inquiryRepository.findById(id)
@@ -56,6 +64,36 @@ public class InquiryService {
 
         Inquiry savedInquiry = inquiryRepository.save(inquiry);
         log.info("Inquiry created successfully with ID: {}", savedInquiry.getId());
+        
+        try {
+            PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
+            String propertyTitle = property != null ? property.getTitle() : "Unknown Property";
+            UUID agentId = property != null ? property.getAgentId() : null;
+            String agentEmail = "unknown@example.com";
+            
+            if (agentId != null) {
+                try {
+                    Optional<Agent> agent = agentService.findAgentById(agentId);
+                    if (agent.isPresent() && agent.get().getUser() != null) {
+                        agentEmail = agent.get().getUser().getEmail();
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not fetch agent email for agent ID: {}", agentId, e);
+                }
+            }
+            
+            eventPublisher.publishEvent(new InquiryCreatedEvent(
+                this,
+                savedInquiry,
+                propertyId,
+                propertyTitle,
+                agentId,
+                agentEmail
+            ));
+            log.info("📢 Published InquiryCreatedEvent for inquiry: {}", savedInquiry.getId());
+        } catch (Exception e) {
+            log.error("Error publishing InquiryCreatedEvent for inquiry: {}", savedInquiry.getId(), e);
+        }
     }
 
     public List<Inquiry> findInquiriesByPropertyId(UUID propertyId) {

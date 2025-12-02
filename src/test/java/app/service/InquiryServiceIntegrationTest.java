@@ -1,5 +1,6 @@
 package app.service;
 
+import app.client.PropertyServiceClient;
 import app.entity.Inquiry;
 import app.entity.InquiryStatus;
 import app.entity.User;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -32,6 +35,9 @@ class InquiryServiceIntegrationTest {
 
     private InquiryService inquiryService;
     private UserService userService;
+    private PropertyServiceClient propertyServiceClient;
+    private AgentService agentService;
+    private ApplicationEventPublisher eventPublisher;
 
     private User testUser;
     private UUID testPropertyId;
@@ -39,7 +45,10 @@ class InquiryServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(userRepository);
-        inquiryService = new InquiryService(inquiryRepository, userService);
+        propertyServiceClient = mock(PropertyServiceClient.class);
+        agentService = mock(AgentService.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
+        inquiryService = new InquiryService(inquiryRepository, userService, propertyServiceClient, agentService, eventPublisher);
         
         inquiryRepository.deleteAll();
         userRepository.deleteAll();

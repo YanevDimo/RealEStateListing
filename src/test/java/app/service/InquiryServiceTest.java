@@ -1,6 +1,9 @@
 package app.service;
 
+import app.client.PropertyServiceClient;
 import app.dto.InquiryDto;
+import app.dto.PropertyDto;
+import app.entity.Agent;
 import app.entity.Inquiry;
 import app.entity.InquiryStatus;
 import app.entity.User;
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 
 import java.util.*;
@@ -28,6 +32,15 @@ class InquiryServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private PropertyServiceClient propertyServiceClient;
+
+    @Mock
+    private AgentService agentService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private InquiryService inquiryService;
@@ -72,11 +85,25 @@ class InquiryServiceTest {
                 .message("I'm interested")
                 .build();
 
+        UUID agentId = UUID.randomUUID();
+        PropertyDto property = PropertyDto.builder()
+                .id(propertyId)
+                .title("Test Property")
+                .agentId(agentId)
+                .build();
+
+        Agent agent = Agent.builder()
+                .id(agentId)
+                .user(testUser)
+                .build();
+
         Authentication authentication = mock(Authentication.class);
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getName()).thenReturn("user@example.com");
         when(userService.findUserByEmail("user@example.com")).thenReturn(Optional.of(testUser));
         when(inquiryRepository.save(any(Inquiry.class))).thenReturn(testInquiry);
+        when(propertyServiceClient.getPropertyById(propertyId)).thenReturn(property);
+        when(agentService.findAgentById(agentId)).thenReturn(Optional.of(agent));
 
         // When
         inquiryService.createInquiry(inquiryDto, propertyId, authentication);
@@ -84,6 +111,7 @@ class InquiryServiceTest {
         // Then
         verify(userService).findUserByEmail("user@example.com");
         verify(inquiryRepository).save(any(Inquiry.class));
+        verify(eventPublisher).publishEvent(any());
     }
 
     @Test
@@ -96,7 +124,16 @@ class InquiryServiceTest {
                 .message("I'm interested")
                 .build();
 
+        UUID agentId = UUID.randomUUID();
+        PropertyDto property = PropertyDto.builder()
+                .id(propertyId)
+                .title("Test Property")
+                .agentId(agentId)
+                .build();
+
         when(inquiryRepository.save(any(Inquiry.class))).thenReturn(testInquiry);
+        when(propertyServiceClient.getPropertyById(propertyId)).thenReturn(property);
+        when(agentService.findAgentById(agentId)).thenReturn(Optional.empty());
 
         // When
         inquiryService.createInquiry(inquiryDto, propertyId, null);
@@ -104,6 +141,7 @@ class InquiryServiceTest {
         // Then
         verify(userService, never()).findUserByEmail(any());
         verify(inquiryRepository).save(any(Inquiry.class));
+        verify(eventPublisher).publishEvent(any());
     }
 
     @Test
@@ -115,17 +153,27 @@ class InquiryServiceTest {
                 .message("I'm interested")
                 .build();
 
+        UUID agentId = UUID.randomUUID();
+        PropertyDto property = PropertyDto.builder()
+                .id(propertyId)
+                .title("Test Property")
+                .agentId(agentId)
+                .build();
+
         Authentication authentication = mock(Authentication.class);
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getName()).thenReturn("felix@example.com");
         when(userService.findUserByEmail("felix@example.com")).thenReturn(Optional.empty());
         when(inquiryRepository.save(any(Inquiry.class))).thenReturn(testInquiry);
+        when(propertyServiceClient.getPropertyById(propertyId)).thenReturn(property);
+        when(agentService.findAgentById(agentId)).thenReturn(Optional.empty());
 
         // When
         inquiryService.createInquiry(inquiryDto, propertyId, authentication);
 
         // Then - should still create inquiry without user
         verify(inquiryRepository).save(any(Inquiry.class));
+        verify(eventPublisher).publishEvent(any());
     }
 
     @Test
