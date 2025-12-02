@@ -54,12 +54,10 @@ public class AuthController {
                               RedirectAttributes redirectAttributes) {
         log.debug("Processing user registration for email: {}", registrationDto.getEmail());
 
-        // Validate password confirmation
         if (!registrationDto.isPasswordMatching()) {
             bindingResult.rejectValue("confirmPassword", "error.confirmPassword", "Passwords do not match");
         }
 
-        // Check if email already exists
         if (userService.userExistsByEmail(registrationDto.getEmail())) {
             bindingResult.rejectValue("email", "error.email", "Email already exists");
         }

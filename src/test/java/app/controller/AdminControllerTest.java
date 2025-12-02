@@ -1,7 +1,6 @@
 package app.controller;
 
-import app.entity.Inquiry;
-import app.entity.InquiryStatus;
+
 import app.entity.User;
 import app.entity.UserRole;
 import app.service.InquiryService;
@@ -10,17 +9,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -38,13 +34,12 @@ class AdminControllerTest {
     @MockitoBean
     private InquiryService inquiryService;
 
-    private User testUser;
     private UUID userId;
 
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        testUser = User.builder()
+        User testUser = User.builder()
                 .id(userId)
                 .email("user@example.com")
                 .name("Test User")

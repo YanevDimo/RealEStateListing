@@ -52,6 +52,7 @@ class PropertyCreateDtoTest {
 
         Set<ConstraintViolation<PropertyCreateDto>> violations = validator.validate(dto);
         assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("title")));
     }
 
     @Test
@@ -66,6 +67,7 @@ class PropertyCreateDtoTest {
 
         Set<ConstraintViolation<PropertyCreateDto>> violations = validator.validate(dto);
         assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("price")));
     }
 
     @Test
@@ -80,6 +82,7 @@ class PropertyCreateDtoTest {
 
         Set<ConstraintViolation<PropertyCreateDto>> violations = validator.validate(dto);
         assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("price")));
     }
 
     @Test
@@ -95,7 +98,10 @@ class PropertyCreateDtoTest {
 
         Set<ConstraintViolation<PropertyCreateDto>> violations = validator.validate(dto);
         assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("bedrooms")));
     }
 }
+
+
 
 

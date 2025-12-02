@@ -164,7 +164,6 @@ public class HomeController {
         try {
             UUID propertyId = UUID.fromString(id);
             
-            // Verify property exists
             PropertyDto property = propertyServiceClient.getPropertyById(propertyId);
             if (property == null) {
                 redirectAttributes.addFlashAttribute("errorMessage", "Property not found");

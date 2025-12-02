@@ -68,7 +68,6 @@ public class AgentController {
                                RedirectAttributes redirectAttributes) {
         log.info("Processing agent registration for email: {}", registrationDto.getEmail());
 
-        // Validate password confirmation
         if (!registrationDto.isPasswordMatching()) {
             bindingResult.rejectValue("confirmPassword", "error.confirmPassword", "Passwords do not match");
         }
@@ -183,7 +182,6 @@ public class AgentController {
             log.warn("Property validation errors: {}", bindingResult.getAllErrors());
             ModelAndView modelAndView = new ModelAndView("agent/add-property");
             modelAndView.addObject("propertyDto", propertyDto);
-            // Cities and propertyTypes are automatically added by ModelAttribute
             return modelAndView;
         }
 

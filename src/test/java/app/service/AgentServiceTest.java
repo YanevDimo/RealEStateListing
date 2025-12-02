@@ -70,78 +70,62 @@ class AgentServiceTest {
 
     @Test
     void testFindAllAgents() {
-        // Given
         List<Agent> agents = Collections.singletonList(testAgent);
         when(agentRepository.findAll()).thenReturn(agents);
 
-        // When
         List<Agent> result = agentService.findAllAgents();
 
-        // Then
         assertEquals(1, result.size());
         verify(agentRepository, times(1)).findAll();
     }
 
     @Test
     void testFindAgentById_Found() {
-        // Given
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
 
-        // When
         Optional<Agent> result = agentService.findAgentById(agentId);
 
-        // Then
         assertTrue(result.isPresent());
         assertEquals("LIC-001", result.get().getLicenseNumber());
     }
 
     @Test
     void testFindAgentByLicenseNumber() {
-        // Given
         when(agentRepository.findByLicenseNumber("LIC-001")).thenReturn(Optional.of(testAgent));
 
-        // When
         Optional<Agent> result = agentService.findAgentByLicenseNumber("LIC-001");
 
-        // Then
         assertTrue(result.isPresent());
         assertEquals("LIC-001", result.get().getLicenseNumber());
     }
 
     @Test
     void testCreateAgent_Success() {
-        // Given
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(agentRepository.existsByUserId(userId)).thenReturn(false);
         when(agentRepository.existsByLicenseNumber("LIC-001")).thenReturn(false);
         when(agentRepository.save(any(Agent.class))).thenReturn(testAgent);
 
-        // When
         Agent result = agentService.createAgent(userId, "LIC-001", "Bio", 5, "Residential");
 
-        // Then
         assertNotNull(result);
         verify(agentRepository).save(any(Agent.class));
     }
 
     @Test
     void testCreateAgent_UserNotFound_ThrowsException() {
-        // Given
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        // When & Then
         assertThrows(UserNotFoundException.class, () ->
                 agentService.createAgent(userId, "LIC-001", "Bio", 5, "Residential"));
     }
 
     @Test
     void testCreateAgent_DuplicateLicense_ThrowsException() {
-        // Given
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
         when(agentRepository.existsByUserId(userId)).thenReturn(false);
         when(agentRepository.existsByLicenseNumber("LIC-001")).thenReturn(true);
 
-        // When & Then
         RuntimeException exception = assertThrows(RuntimeException.class, () ->
                 agentService.createAgent(userId, "LIC-001", "Bio", 5, "Residential"));
 
@@ -150,114 +134,498 @@ class AgentServiceTest {
 
     @Test
     void testUpdateAgentRating() {
-        // Given
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
         when(agentRepository.save(any(Agent.class))).thenReturn(testAgent);
 
-        // When
         Agent result = agentService.updateAgentRating(agentId, new BigDecimal("4.8"));
 
-        // Then
         assertEquals(new BigDecimal("4.8"), result.getRating());
         verify(agentRepository).save(testAgent);
     }
 
     @Test
     void testIncrementAgentListings() {
-        // Given
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
         when(agentRepository.save(any(Agent.class))).thenReturn(testAgent);
 
-        // When
         agentService.incrementAgentListings(agentId);
 
-        // Then
         assertEquals(11, testAgent.getTotalListings());
         verify(agentRepository).save(testAgent);
     }
 
     @Test
     void testDecrementAgentListings() {
-        // Given
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
         when(agentRepository.save(any(Agent.class))).thenReturn(testAgent);
 
-        // When
         agentService.decrementAgentListings(agentId);
 
-        // Then
         assertEquals(9, testAgent.getTotalListings());
         verify(agentRepository).save(testAgent);
     }
 
     @Test
     void testDecrementAgentListings_DoesNotGoBelowZero() {
-        // Given
         testAgent.setTotalListings(0);
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
         when(agentRepository.save(any(Agent.class))).thenReturn(testAgent);
 
-        // When
         agentService.decrementAgentListings(agentId);
 
-        // Then
         assertEquals(0, testAgent.getTotalListings());
     }
 
     @Test
     void testFindAgentsByRating() {
-        // Given
         Agent agent1 = Agent.builder().rating(new BigDecimal("4.5")).build();
         Agent agent2 = Agent.builder().rating(new BigDecimal("3.0")).build();
         List<Agent> allAgents = Arrays.asList(agent1, agent2);
         when(agentRepository.findAll()).thenReturn(allAgents);
 
-        // When
         List<Agent> result = agentService.findAgentsByRating(new BigDecimal("4.0"));
 
-        // Then
         assertEquals(1, result.size());
         assertEquals(new BigDecimal("4.5"), result.get(0).getRating());
     }
 
     @Test
     void testGetAgentStatistics() {
-        // Given
         when(agentRepository.count()).thenReturn(5L);
         when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
 
-        // When
         AgentService.AgentStatistics stats = agentService.getAgentStatistics();
 
-        // Then
         assertNotNull(stats);
         assertEquals(5L, stats.getTotalAgents());
     }
 
     @Test
     void testCountActivePropertiesByAgent() {
-        // Given
         PropertyDto property = PropertyDto.builder().status("ACTIVE").build();
         when(propertyServiceClient.getPropertiesByAgent(agentId))
                 .thenReturn(Collections.singletonList(property));
 
-        // When
         long result = agentService.countActivePropertiesByAgent(agentId);
 
-        // Then
         assertEquals(1, result);
     }
 
     @Test
     void testCountActivePropertiesByAgent_Exception_ReturnsZero() {
-        // Given
         when(propertyServiceClient.getPropertiesByAgent(agentId))
                 .thenThrow(new RuntimeException("Service error"));
 
-        // When
         long result = agentService.countActivePropertiesByAgent(agentId);
 
-        // Then
         assertEquals(0, result);
+    }
+
+    @Test
+    void testCountAllAgents() {
+        when(agentRepository.count()).thenReturn(5L);
+
+        long result = agentService.countAllAgents();
+
+        assertEquals(5L, result);
+    }
+
+    @Test
+    void testSaveAgent() {
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        Agent result = agentService.saveAgent(testAgent);
+
+        assertNotNull(result);
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testIncrementAgentListings_AgentNotFound() {
+        when(agentRepository.findById(agentId)).thenReturn(Optional.empty());
+
+        agentService.incrementAgentListings(agentId);
+
+        verify(agentRepository, never()).save(any());
+    }
+
+    @Test
+    void testFindAgentByUserId() {
+        when(agentRepository.findByUserId(userId)).thenReturn(Optional.of(testAgent));
+
+        Optional<Agent> result = agentService.findAgentByUserId(userId);
+
+        assertTrue(result.isPresent());
+        assertEquals(agentId, result.get().getId());
+    }
+
+    @Test
+    void testLicenseNumberExists() {
+        when(agentRepository.existsByLicenseNumber("LIC-001")).thenReturn(true);
+
+        boolean result = agentService.licenseNumberExists("LIC-001");
+
+        assertTrue(result);
+    }
+
+    @Test
+    void testFindAgentsByExperience() {
+        Agent agent1 = Agent.builder().experienceYears(5).build();
+        Agent agent2 = Agent.builder().experienceYears(3).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+
+        List<Agent> result = agentService.findAgentsByExperience(4);
+
+        assertEquals(1, result.size());
+        assertEquals(5, result.get(0).getExperienceYears());
+    }
+
+    @Test
+    void testFindTopRatedAgents() {
+        Agent agent1 = Agent.builder().rating(new BigDecimal("4.5")).build();
+        Agent agent2 = Agent.builder().rating(new BigDecimal("3.0")).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+
+        List<Agent> result = agentService.findTopRatedAgents(org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertEquals(2, result.size());
+        assertEquals(new BigDecimal("4.5"), result.get(0).getRating());
+    }
+
+    @Test
+    void testFindAgentsByExperienceRange() {
+        Agent agent1 = Agent.builder().experienceYears(5).build();
+        Agent agent2 = Agent.builder().experienceYears(3).build();
+        Agent agent3 = Agent.builder().experienceYears(10).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2, agent3));
+
+        List<Agent> result = agentService.findAgentsByExperienceRange(4, 8);
+
+        assertEquals(1, result.size());
+        assertEquals(5, result.get(0).getExperienceYears());
+    }
+
+    @Test
+    void testFindAgentsByRatingRange() {
+        Agent agent1 = Agent.builder().rating(new BigDecimal("4.5")).build();
+        Agent agent2 = Agent.builder().rating(new BigDecimal("3.0")).build();
+        Agent agent3 = Agent.builder().rating(new BigDecimal("2.0")).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2, agent3));
+
+        List<Agent> result = agentService.findAgentsByRatingRange(new BigDecimal("3.0"), new BigDecimal("4.0"));
+
+        assertEquals(1, result.size());
+        assertEquals(new BigDecimal("3.0"), result.get(0).getRating());
+    }
+
+    @Test
+    void testFindAgentsByMostListings() {
+        Agent agent1 = Agent.builder().totalListings(10).build();
+        Agent agent2 = Agent.builder().totalListings(5).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+
+        List<Agent> result = agentService.findAgentsByMostListings(org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertEquals(2, result.size());
+        assertEquals(10, result.get(0).getTotalListings());
+    }
+
+    @Test
+    void testFindAgentsBySpecialization() {
+        testAgent.setSpecializations("[\"Residential\", \"Commercial\"]");
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.findAgentsBySpecialization("Residential");
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testFindAgentsBySpecialization_NoMatch() {
+        testAgent.setSpecializations("[\"Commercial\"]");
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.findAgentsBySpecialization("Residential");
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testSearchAgentsByName() {
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.searchAgentsByName("Test");
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testSearchAgentsByEmail() {
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.searchAgentsByEmail("agent");
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testFindAgentsWithActiveProperties() {
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+        when(propertyUtilityService.agentHasActiveProperties(agentId)).thenReturn(true);
+
+        List<Agent> result = agentService.findAgentsWithActiveProperties();
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testFindAgentsWithBio() {
+        testAgent.setBio("Test bio");
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.findAgentsWithBio();
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testFindAgentsWithBio_NoBio() {
+        testAgent.setBio(null);
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.findAgentsWithBio();
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testFindAgentsCreatedAfter() {
+        testAgent.setCreatedAt(java.time.LocalDateTime.now());
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        List<Agent> result = agentService.findAgentsCreatedAfter(java.time.LocalDateTime.now().minusDays(1));
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void testCountAgentsByExperience() {
+        Agent agent1 = Agent.builder().experienceYears(5).build();
+        Agent agent2 = Agent.builder().experienceYears(3).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+
+        long result = agentService.countAgentsByExperience(4);
+
+        assertEquals(1, result);
+    }
+
+    @Test
+    void testCountAgentsByRating() {
+        Agent agent1 = Agent.builder().rating(new BigDecimal("4.5")).build();
+        Agent agent2 = Agent.builder().rating(new BigDecimal("3.0")).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+
+        long result = agentService.countAgentsByRating(new BigDecimal("4.0"));
+
+        assertEquals(1, result);
+    }
+
+    @Test
+    void testGetAverageRating() {
+        Agent agent1 = Agent.builder().rating(new BigDecimal("4.0")).build();
+        Agent agent2 = Agent.builder().rating(new BigDecimal("2.0")).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+        when(agentRepository.count()).thenReturn(2L);
+
+        BigDecimal result = agentService.getAverageRating();
+
+        assertEquals(new BigDecimal("3.00"), result);
+    }
+
+    @Test
+    void testGetTotalListings() {
+        Agent agent1 = Agent.builder().totalListings(10).build();
+        Agent agent2 = Agent.builder().totalListings(5).build();
+        when(agentRepository.findAll()).thenReturn(Arrays.asList(agent1, agent2));
+
+        Long result = agentService.getTotalListings();
+
+        assertEquals(15L, result);
+    }
+
+    @Test
+    void testUpdateAgent() {
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        Agent result = agentService.updateAgent(testAgent);
+
+        assertNotNull(result);
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testDeleteAgent() {
+        doNothing().when(agentRepository).deleteById(agentId);
+
+        agentService.deleteAgent(agentId);
+
+        verify(agentRepository).deleteById(agentId);
+    }
+
+    @Test
+    void testUpdateAgentExperience() {
+        when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        Agent result = agentService.updateAgentExperience(agentId, 7);
+
+        assertEquals(7, result.getExperienceYears());
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testUpdateAgentBio() {
+        when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        Agent result = agentService.updateAgentBio(agentId, "New bio");
+
+        assertEquals("New bio", result.getBio());
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testUpdateAgentSpecializations() {
+        when(agentRepository.findById(agentId)).thenReturn(Optional.of(testAgent));
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        Agent result = agentService.updateAgentSpecializations(agentId, "[\"New\"]");
+
+        assertEquals("[\"New\"]", result.getSpecializations());
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testSyncAgentListingsFromPropertyService() {
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+        when(propertyServiceClient.getPropertiesByAgent(agentId))
+                .thenReturn(Collections.singletonList(PropertyDto.builder().status("ACTIVE").build()));
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        int result = agentService.syncAgentListingsFromPropertyService();
+
+        assertEquals(1, result);
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testSyncAgentListingsFromPropertyService_NoChange() {
+        testAgent.setTotalListings(1);
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+        when(propertyServiceClient.getPropertiesByAgent(agentId))
+                .thenReturn(Collections.singletonList(PropertyDto.builder().status("ACTIVE").build()));
+
+        int result = agentService.syncAgentListingsFromPropertyService();
+
+        assertEquals(0, result);
+    }
+
+    @Test
+    void testSyncAgentListingsFromPropertyService_Exception() {
+        Agent agentWithSameCount = Agent.builder()
+                .id(agentId)
+                .totalListings(0)
+                .build();
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(agentWithSameCount));
+        when(propertyServiceClient.getPropertiesByAgent(agentId))
+                .thenThrow(new RuntimeException("Error"));
+
+        int result = agentService.syncAgentListingsFromPropertyService();
+
+        assertEquals(0, result);
+        verify(agentRepository, never()).save(any());
+    }
+
+    @Test
+    void testRecalculateAgentRatings() {
+        testAgent.setTotalListings(10);
+        testAgent.setExperienceYears(5);
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+        when(agentRepository.save(testAgent)).thenReturn(testAgent);
+
+        int result = agentService.recalculateAgentRatings();
+
+        assertEquals(1, result);
+        verify(agentRepository).save(testAgent);
+    }
+
+    @Test
+    void testRecalculateAgentRatings_NoListings() {
+        testAgent.setTotalListings(0);
+        when(agentRepository.findAll()).thenReturn(Collections.singletonList(testAgent));
+
+        int result = agentService.recalculateAgentRatings();
+
+        assertEquals(0, result);
+        verify(agentRepository, never()).save(any());
+    }
+
+    @Test
+    void testCalculateAgentListStatistics() {
+        Agent agent1 = Agent.builder().totalListings(5).experienceYears(3).build();
+        Agent agent2 = Agent.builder().totalListings(0).experienceYears(5).build();
+        List<Agent> agents = Arrays.asList(agent1, agent2);
+
+        AgentService.AgentListStatistics stats = agentService.calculateAgentListStatistics(agents);
+
+        assertNotNull(stats);
+        assertEquals(2, stats.getTotalAgents());
+        assertEquals(1, stats.getAgentsWithProperties());
+    }
+
+    @Test
+    void testCalculateAgentListStatistics_EmptyList() {
+        AgentService.AgentListStatistics stats = agentService.calculateAgentListStatistics(Collections.emptyList());
+
+        assertNotNull(stats);
+        assertEquals(0, stats.getTotalAgents());
+    }
+
+    @Test
+    void testCalculateAgentListStatistics_NullList() {
+        AgentService.AgentListStatistics stats = agentService.calculateAgentListStatistics(null);
+
+        assertNotNull(stats);
+        assertEquals(0, stats.getTotalAgents());
+    }
+
+    @Test
+    void testParseSpecializationsFromJson() {
+        String result = agentService.parseSpecializationsFromJson("[\"Residential\", \"Commercial\"]");
+
+        assertNotNull(result);
+        assertTrue(result.contains("Residential"));
+    }
+
+    @Test
+    void testParseSpecializationsFromJson_Empty() {
+        String result = agentService.parseSpecializationsFromJson("[]");
+
+        assertEquals("", result);
+    }
+
+    @Test
+    void testParseSpecializationsFromJson_Null() {
+        String result = agentService.parseSpecializationsFromJson(null);
+
+        assertEquals("", result);
+    }
+
+    @Test
+    void testParseSpecializationsFromJson_Invalid() {
+        String invalid = "invalid json";
+        String result = agentService.parseSpecializationsFromJson(invalid);
+
+        assertEquals(invalid, result);
     }
 }
