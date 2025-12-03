@@ -220,6 +220,7 @@ PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 
 ### System Features
 - **Spring Events:** Asynchronous event-driven notifications
+- **Spring AOP:** Aspect-oriented programming for centralized logging
 - **Caching:** Performance optimization with Spring Cache
 - **Scheduled Jobs:** Automated data synchronization
 - **Microservice Communication:** Feign Client integration
@@ -512,6 +513,7 @@ View report at: `target/site/jacoco/index.html`
   - Rating updates every 15 minutes (fixed delay)
 - **Caching:** Enabled for cities, property types, featured properties, and all properties
 - **Event Processing:** Async event listeners for better performance
+- **AOP Logging:** Automatic method-level logging for all services and controllers
 
 ## 📚 Additional Information
 
@@ -591,6 +593,7 @@ View report at: `target/site/jacoco/index.html`
 ### Key Components
 - **Feign Client:** Microservice communication
 - **Spring Events:** Asynchronous event processing
+- **Spring AOP:** Aspect-oriented programming for cross-cutting concerns
 - **Spring Cache:** Performance optimization
 - **Scheduled Tasks:** Automated background jobs
 - **Global Exception Handler:** Centralized error handling
@@ -636,6 +639,37 @@ View report at: `target/site/jacoco/index.html`
 4. Listeners automatically react:
    - Notification listener sends agent notification
    - Statistics listener updates inquiry counts
+
+### AOP (Aspect-Oriented Programming) Implementation (2 bonus points)
+- **Aspect Class:** `LoggingAspect` - Centralized logging aspect
+- **Technology:** Spring AOP with AspectJ
+- **Purpose:** Separates cross-cutting concerns (logging) from business logic
+- **Coverage:** Automatically logs all service and controller methods
+- **Features:**
+  - Method entry/exit logging
+  - Execution time measurement
+  - Automatic exception logging
+  - Performance monitoring
+
+**How it works:**
+1. `@Aspect` annotation marks the class as an aspect
+2. `@Pointcut` defines which methods to intercept (services and controllers)
+3. `@Around` advice wraps method execution
+4. Automatically logs:
+   - Method entry: `→ Entering method: ClassName.methodName()`
+   - Method exit: `← Exiting method: ClassName.methodName() - Execution time: X ms`
+   - Exceptions: `✗ Exception in method: ClassName.methodName() - Error: ...`
+
+**Benefits:**
+- Centralized logging logic (no need for `log.debug()` in every method)
+- Consistent logging format across the application
+- Automatic performance monitoring
+- Cleaner business code
+- Easy to extend with more aspects (security, validation, etc.)
+
+**Files:**
+- `src/main/java/app/aspect/LoggingAspect.java` - Main aspect implementation
+- `pom.xml` - Contains `spring-boot-starter-aop` dependency
 
 #
 
