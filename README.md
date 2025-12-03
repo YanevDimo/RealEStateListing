@@ -30,6 +30,11 @@ Before running this application, ensure you have the following installed:
    - The property-service must be running and accessible at `http://localhost:8083`
    - Ensure the property-service is started before running this application
 
+5. **Docker & Docker Compose** (Optional - for Docker setup)
+   - Download from: https://www.docker.com/products/docker-desktop
+   - Verify installation: `docker --version` and `docker-compose --version`
+   - Required only if using Docker deployment option
+
 ## 🚀 Quick Start
 
 ### 1. Clone the Repository
@@ -113,6 +118,8 @@ mvn clean install
 
 ### 6. Run the Application
 
+#### Option A: Using Maven (Traditional)
+
 ```bash
 # Using Maven Wrapper
 ./mvnw spring-boot:run
@@ -127,10 +134,57 @@ mvn spring-boot:run
 java -jar target/RealEstateListingAppDemo-0.0.1-SNAPSHOT.jar
 ```
 
+#### Option B: Using Docker (Recommended)
+
+**Prerequisites:** Docker and Docker Compose must be installed
+
+**Note:** The property-service must be running separately (either on host machine or in another container) and accessible at `http://localhost:8083` or configure `PROPERTY_SERVICE_URL` environment variable.
+
+1. **Build the JAR file:**
+   ```bash
+   ./mvnw clean package -DskipTests
+   ```
+
+2. **Build Docker image:**
+   ```bash
+   docker build -t realestate-app .
+   ```
+
+3. **Start all services (app + MySQL):**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **View logs:**
+   ```bash
+   docker-compose logs -f app
+   ```
+
+5. **Stop services:**
+   ```bash
+   docker-compose down
+   ```
+
+6. **Stop and remove volumes (clean slate):**
+   ```bash
+   docker-compose down -v
+   ```
+
+**Custom Property Service URL:**
+If property-service runs on a different host/port, set environment variable:
+```bash
+PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
+```
+
+**⚠️ Important:** 
+- **Properties** are fetched from the `property-service` microservice. If you don't see properties, ensure the property-service is running on port 8083.
+- **Agents** are stored in the main database. Register agents through the registration form at `/agent/register`.
+
 ### 7. Access the Application
 
 - **Application URL:** http://localhost:8080
 - **Default port:** 8080 (can be changed in `application.properties`)
+- **MySQL:** Available on port 3307 (when using Docker, mapped from container port 3306)
 
 ## ✨ Features
 
@@ -434,6 +488,20 @@ View report at: `target/site/jacoco/index.html`
    - Ensure your IDE has Lombok plugin installed
    - Enable annotation processing in IDE settings
 
+6. **Docker Issues**
+   - Ensure Docker is running: `docker --version`
+   - Check if port 3307 or 8080 is already in use (MySQL uses 3307 to avoid conflicts)
+   - View container logs: `docker-compose logs app`
+   - Rebuild image if code changes: `docker-compose up -d --build`
+
+7. **No Properties or Agents Showing**
+   - **Properties:** Ensure the property-service microservice is running on port 8083
+     - Properties are fetched from the property-service, not stored in the main database
+     - Check logs: `docker-compose logs app | grep -i "property-service"`
+   - **Agents:** Register agents through the registration form
+     - Visit http://localhost:8080/agent/register to create an agent account
+     - Agents are stored in the main database
+
 ## 📝 Development Notes
 
 - **Thymeleaf Cache:** Disabled in development (`spring.thymeleaf.cache=false`)
@@ -528,6 +596,29 @@ View report at: `target/site/jacoco/index.html`
 - **Global Exception Handler:** Centralized error handling
 
 ## 🎁 Bonus Features
+
+### Docker Setup (1 bonus point)
+- **Dockerfile:** Containerizes the Spring Boot application (multi-stage build)
+- **docker-compose.yml:** Orchestrates both application and MySQL database
+- **Features:**
+  - MySQL 8.0 container with persistent data volume
+  - Application container with health checks
+  - Automatic database initialization
+  - Network isolation between services
+  - Easy deployment with single command
+  - Port mapping: MySQL on 3307 (host) → 3306 (container) to avoid conflicts
+
+**How to use:**
+1. Start everything: `docker-compose up -d` (builds JAR automatically)
+2. Access: http://localhost:8080
+3. Register agents through the registration form at `/agent/register`
+
+**Note:** Properties require the property-service microservice to be running separately on port 8083.
+
+**Files:**
+- `Dockerfile` - Application container definition (multi-stage build)
+- `docker-compose.yml` - Multi-container orchestration
+- `.dockerignore` - Excludes unnecessary files from build
 
 ### Spring Events Implementation (1 bonus point)
 - **Event Class:** `InquiryCreatedEvent` - Custom application event
