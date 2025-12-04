@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
@@ -38,6 +39,7 @@ class InquiryServiceIntegrationTest {
     private PropertyServiceClient propertyServiceClient;
     private AgentService agentService;
     private ApplicationEventPublisher eventPublisher;
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     private User testUser;
     private UUID testPropertyId;
@@ -48,7 +50,8 @@ class InquiryServiceIntegrationTest {
         propertyServiceClient = mock(PropertyServiceClient.class);
         agentService = mock(AgentService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
-        inquiryService = new InquiryService(inquiryRepository, userService, propertyServiceClient, agentService, eventPublisher);
+        kafkaTemplate = mock(KafkaTemplate.class);
+        inquiryService = new InquiryService(inquiryRepository, userService, propertyServiceClient, agentService, eventPublisher, kafkaTemplate);
         
         inquiryRepository.deleteAll();
         userRepository.deleteAll();

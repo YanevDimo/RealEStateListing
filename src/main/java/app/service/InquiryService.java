@@ -1,6 +1,7 @@
 package app.service;
 
 import app.client.PropertyServiceClient;
+import app.dto.InquiryCreatedKafkaEvent;
 import app.dto.InquiryDto;
 import app.dto.PropertyDto;
 import app.entity.Agent;
@@ -13,6 +14,7 @@ import app.repository.InquiryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ public class InquiryService {
     private final PropertyServiceClient propertyServiceClient;
     private final AgentService agentService;
     private final ApplicationEventPublisher eventPublisher;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     private Inquiry findInquiryByIdOrThrow(UUID id) {
         return inquiryRepository.findById(id)
@@ -91,6 +94,30 @@ public class InquiryService {
                 agentEmail
             ));
             log.info("📢 Published InquiryCreatedEvent for inquiry: {}", savedInquiry.getId());
+            
+            // Publish to Kafka for distributed event processing
+            try {
+                InquiryCreatedKafkaEvent kafkaEvent = InquiryCreatedKafkaEvent.builder()
+                        .inquiryId(savedInquiry.getId())
+                        .propertyId(propertyId)
+                        .propertyTitle(propertyTitle)
+                        .agentId(agentId)
+                        .agentEmail(agentEmail)
+                        .contactName(savedInquiry.getContactName())
+                        .contactEmail(savedInquiry.getContactEmail())
+                        .contactPhone(savedInquiry.getContactPhone())
+                        .message(savedInquiry.getMessage())
+                        .createdAt(savedInquiry.getCreatedAt())
+                        .build();
+                
+                kafkaTemplate.send("inquiry-created", kafkaEvent);
+                log.info("📨 Published inquiry event to Kafka topic 'inquiry-created' for inquiry: {}", 
+                        savedInquiry.getId());
+            } catch (Exception e) {
+                log.error("Error publishing inquiry event to Kafka for inquiry: {}", 
+                        savedInquiry.getId(), e);
+                // Don't fail the inquiry creation if Kafka fails
+            }
         } catch (Exception e) {
             log.error("Error publishing InquiryCreatedEvent for inquiry: {}", savedInquiry.getId(), e);
         }

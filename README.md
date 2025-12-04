@@ -26,13 +26,15 @@ Before running this application, ensure you have the following installed:
    - The application will auto-create the database if `createDatabaseIfNotExist=true` is set
 
 4. **Property Service Microservice** (Required)
+
    - This application depends on a property-service microservice running on port 8083
    - The property-service must be running and accessible at `http://localhost:8083`
-   - Ensure the property-service is started before running this application
 
-5. **Docker & Docker Compose** (Optional - for Docker setup)
+5. **Docker & Docker Compose** (Optional - for Docker setup and Kafka)
    - Download from: https://www.docker.com/products/docker-desktop
    - Verify installation: `docker --version` and `docker-compose --version`
+   - Required if using Docker Compose to run the application with Kafka
+   - Kafka is included in docker-compose.yml for distributed event streaming
    - Required only if using Docker deployment option
 
 ## 🚀 Quick Start
@@ -141,26 +143,31 @@ java -jar target/RealEstateListingAppDemo-0.0.1-SNAPSHOT.jar
 **Note:** The property-service must be running separately (either on host machine or in another container) and accessible at `http://localhost:8083` or configure `PROPERTY_SERVICE_URL` environment variable.
 
 1. **Build the JAR file:**
+
    ```bash
    ./mvnw clean package -DskipTests
    ```
 
 2. **Build Docker image:**
+
    ```bash
    docker build -t realestate-app .
    ```
 
 3. **Start all services (app + MySQL):**
+
    ```bash
    docker-compose up -d
    ```
 
 4. **View logs:**
+
    ```bash
    docker-compose logs -f app
    ```
 
 5. **Stop services:**
+
    ```bash
    docker-compose down
    ```
@@ -172,11 +179,13 @@ java -jar target/RealEstateListingAppDemo-0.0.1-SNAPSHOT.jar
 
 **Custom Property Service URL:**
 If property-service runs on a different host/port, set environment variable:
+
 ```bash
 PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 ```
 
-**⚠️ Important:** 
+**⚠️ Important:**
+
 - **Properties** are fetched from the `property-service` microservice. If you don't see properties, ensure the property-service is running on port 8083.
 - **Agents** are stored in the main database. Register agents through the registration form at `/agent/register`.
 
@@ -189,6 +198,7 @@ PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 ## ✨ Features
 
 ### Public Features
+
 - Browse and search properties with advanced filters (city, type, price range)
 - View property details with images and descriptions
 - Submit property inquiries
@@ -197,12 +207,14 @@ PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 - About page with application information
 
 ### User Features
+
 - User registration and authentication
 - View personal inquiry history
 - Edit user profile information
 - Secure password-based login
 
 ### Agent Features
+
 - Agent registration with license number verification
 - Create, edit, and delete properties
 - Upload multiple property images
@@ -212,6 +224,7 @@ PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 - View inquiry details and update status
 
 ### Admin Features
+
 - User management (view all users, activate/deactivate)
 - Role management (change user roles: USER, AGENT, ADMIN)
 - View all inquiries across the system
@@ -219,7 +232,9 @@ PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 - Monitor user activity and system health
 
 ### System Features
+
 - **Spring Events:** Asynchronous event-driven notifications
+- **Apache Kafka:** Distributed event streaming for microservices
 - **Spring AOP:** Aspect-oriented programming for centralized logging
 - **Caching:** Performance optimization with Spring Cache
 - **Scheduled Jobs:** Automated data synchronization
@@ -234,6 +249,7 @@ PROPERTY_SERVICE_URL=http://your-host:8083 docker-compose up -d
 The application implements the following valid domain functionalities that cause state changes:
 
 ### 1. Create Inquiry
+
 - **Endpoint:** `POST /properties/{id}/inquiry`
 - **Description:** Users can submit inquiries about properties
 - **State Changes:** Creates new `Inquiry` entity in database
@@ -241,6 +257,7 @@ The application implements the following valid domain functionalities that cause
 - **Additional:** Triggers Spring Events for notifications
 
 ### 2. Agent Registration
+
 - **Endpoint:** `POST /agent/register`
 - **Description:** New agents can register with license verification
 - **State Changes:** Creates `User` and `Agent` entities
@@ -248,6 +265,7 @@ The application implements the following valid domain functionalities that cause
 - **Validation:** Ensures unique email and license number
 
 ### 3. Create Property
+
 - **Endpoint:** `POST /agent/properties/add`
 - **Description:** Agents can create new property listings
 - **State Changes:** Creates property via property-service, updates agent listing count
@@ -255,6 +273,7 @@ The application implements the following valid domain functionalities that cause
 - **Features:** Image upload, property details validation
 
 ### 4. Edit Property
+
 - **Endpoint:** `POST /agent/properties/edit/{id}`
 - **Description:** Agents can update their property listings
 - **State Changes:** Updates property in property-service, invalidates cache
@@ -262,6 +281,7 @@ The application implements the following valid domain functionalities that cause
 - **Security:** Only property owner can edit
 
 ### 5. Delete Property
+
 - **Endpoint:** `POST /agent/properties/delete/{id}`
 - **Description:** Agents can delete their property listings
 - **State Changes:** Removes property from property-service, updates agent statistics
@@ -269,6 +289,7 @@ The application implements the following valid domain functionalities that cause
 - **Security:** Only property owner can delete
 
 ### 6. Update Inquiry Status
+
 - **Endpoint:** `POST /agent/inquiries/{id}/update`
 - **Description:** Agents can respond to inquiries and update status
 - **State Changes:** Updates `Inquiry` entity status and response
@@ -276,6 +297,7 @@ The application implements the following valid domain functionalities that cause
 - **Status Flow:** NEW → CONTACTED → CLOSED
 
 ### 7. User Registration
+
 - **Endpoint:** `POST /auth/register`
 - **Description:** New users can create accounts
 - **State Changes:** Creates new `User` entity with hashed password
@@ -283,6 +305,7 @@ The application implements the following valid domain functionalities that cause
 - **Validation:** Email uniqueness, password strength
 
 ### 8. Admin Role Management
+
 - **Endpoint:** `POST /admin/users/{id}/role`
 - **Description:** Admin can change user roles
 - **State Changes:** Updates `User` entity role field
@@ -290,6 +313,7 @@ The application implements the following valid domain functionalities that cause
 - **Roles:** USER, AGENT, ADMIN
 
 ### 9. User Activation/Deactivation
+
 - **Endpoint:** `POST /admin/users/{id}/activate` or `/deactivate`
 - **Description:** Admin can activate or deactivate user accounts
 - **State Changes:** Updates `User.isActive` field
@@ -395,6 +419,7 @@ FLUSH PRIVILEGES;
 ## 🔗 Integrations with Other Systems/Applications
 
 ### Property Service Microservice
+
 - **Type:** REST API Microservice
 - **Communication Method:** Spring Cloud OpenFeign
 - **Default URL:** http://localhost:8083
@@ -414,12 +439,13 @@ FLUSH PRIVILEGES;
 **⚠️ Important:** The application will fail to load properties if the property-service is not running.
 
 ### Database Integration
+
 - **Type:** MySQL 8.0+ Database
 - **Purpose:** Stores users, agents, cities, property types, and inquiries
 - **Connection:** Spring Data JPA / Hibernate ORM
 - **Auto-schema:** Tables created automatically on startup (`ddl-auto=update`)
 - **Primary Keys:** UUID for all entities
-- **Relationships:** 
+- **Relationships:**
   - User ↔ Agent (OneToOne)
   - User ↔ Inquiry (OneToMany)
   - City, PropertyType (standalone entities)
@@ -486,10 +512,12 @@ View report at: `target/site/jacoco/index.html`
    - Check file size limits in `application.properties`
 
 5. **Lombok Not Working**
+
    - Ensure your IDE has Lombok plugin installed
    - Enable annotation processing in IDE settings
 
 6. **Docker Issues**
+
    - Ensure Docker is running: `docker --version`
    - Check if port 3307 or 8080 is already in use (MySQL uses 3307 to avoid conflicts)
    - View container logs: `docker-compose logs app`
@@ -508,16 +536,18 @@ View report at: `target/site/jacoco/index.html`
 - **Thymeleaf Cache:** Disabled in development (`spring.thymeleaf.cache=false`)
 - **SQL Logging:** Enabled (`spring.jpa.show-sql=true`)
 - **Hibernate DDL:** Set to `update` (auto-creates/updates schema)
-- **Scheduled Jobs:** 
+- **Scheduled Jobs:**
   - Daily sync at 3:00 AM (cron: `0 0 3 * * ?`)
   - Rating updates every 15 minutes (fixed delay)
 - **Caching:** Enabled for cities, property types, featured properties, and all properties
 - **Event Processing:** Async event listeners for better performance
+- **Kafka Integration:** Distributed event streaming for inquiry events
 - **AOP Logging:** Automatic method-level logging for all services and controllers
 
 ## 📚 Additional Information
 
 ### Project Statistics
+
 - **Total Java Classes:** 60+
 - **Total Test Classes:** 28
 - **Total Tests:** 387
@@ -528,6 +558,7 @@ View report at: `target/site/jacoco/index.html`
 - **Repositories:** 5 JPA repositories
 
 ### Code Quality
+
 - **No Dead Code:** All code is actively used
 - **Clean Code:** No comments, well-structured
 - **Naming Conventions:** Follows Java standards
@@ -538,18 +569,21 @@ View report at: `target/site/jacoco/index.html`
 ## 🔒 Security
 
 ### Authentication & Authorization
+
 - **Authentication:** Form-based login with Spring Security
 - **Password Hashing:** BCryptPasswordEncoder (one-way hashing)
 - **Session Management:** HTTP session-based authentication
 - **CSRF Protection:** Enabled by default (not disabled)
 
 ### Role-Based Access Control
+
 - **Roles:** USER, AGENT, ADMIN
 - **Public Endpoints:** Home, properties, agents list, about, contact, login, register
 - **Authenticated Endpoints:** Agent dashboard, property management
 - **Admin-Only Endpoints:** `/admin/**` (user management, role changes)
 
 ### Security Features
+
 - Password validation and strength requirements
 - Email uniqueness validation
 - License number uniqueness for agents
@@ -557,11 +591,13 @@ View report at: `target/site/jacoco/index.html`
 - Inquiry access control (agents can only view inquiries for their properties)
 
 ### Security Configuration
+
 - **File:** `src/main/java/app/config/SecurityConfig.java`
 - **Custom Success Handler:** Role-based redirect after login
 - **Logout:** Proper session invalidation and cookie deletion
 
 ### Security Considerations
+
 - Default database password is hardcoded - **change for production**
 - Use environment variables for sensitive data
 - Configure proper security settings for production
@@ -570,12 +606,14 @@ View report at: `target/site/jacoco/index.html`
 ## 📊 Architecture
 
 ### System Architecture
+
 - **Main Application:** Port 8080 (Spring Boot MVC application)
 - **Property Service:** Port 8083 (Separate microservice)
 - **Database:** MySQL (separate from property-service database)
 - **Communication:** Feign Client for inter-service REST calls
 
 ### Application Layers
+
 1. **Controller Layer:** Handles HTTP requests, view rendering
 2. **Service Layer:** Business logic, validation, orchestration
 3. **Repository Layer:** Data access via Spring Data JPA
@@ -584,6 +622,7 @@ View report at: `target/site/jacoco/index.html`
 6. **Exception Layer:** Global exception handling
 
 ### Design Patterns
+
 - **Layered Architecture:** Clear separation of concerns
 - **Repository Pattern:** Data access abstraction
 - **Service Pattern:** Business logic encapsulation
@@ -591,8 +630,10 @@ View report at: `target/site/jacoco/index.html`
 - **Event-Driven:** Spring Events for decoupled notifications
 
 ### Key Components
+
 - **Feign Client:** Microservice communication
 - **Spring Events:** Asynchronous event processing
+- **Apache Kafka:** Distributed event streaming
 - **Spring AOP:** Aspect-oriented programming for cross-cutting concerns
 - **Spring Cache:** Performance optimization
 - **Scheduled Tasks:** Automated background jobs
@@ -600,7 +641,8 @@ View report at: `target/site/jacoco/index.html`
 
 ## 🎁 Bonus Features
 
-### Docker Setup (1 bonus point)
+### Docker Setup
+
 - **Dockerfile:** Containerizes the Spring Boot application (multi-stage build)
 - **docker-compose.yml:** Orchestrates both application and MySQL database
 - **Features:**
@@ -612,18 +654,28 @@ View report at: `target/site/jacoco/index.html`
   - Port mapping: MySQL on 3307 (host) → 3306 (container) to avoid conflicts
 
 **How to use:**
+
 1. Start everything: `docker-compose up -d` (builds JAR automatically)
 2. Access: http://localhost:8080
 3. Register agents through the registration form at `/agent/register`
 
+**Services included:**
+
+- MySQL 8.0 (port 3307)
+- Zookeeper (port 2181)
+- Kafka (port 9092)
+- Application (port 8080)
+
 **Note:** Properties require the property-service microservice to be running separately on port 8083.
 
 **Files:**
+
 - `Dockerfile` - Application container definition (multi-stage build)
 - `docker-compose.yml` - Multi-container orchestration
 - `.dockerignore` - Excludes unnecessary files from build
 
-### Spring Events Implementation (1 bonus point)
+### Spring Events Implementation
+
 - **Event Class:** `InquiryCreatedEvent` - Custom application event
 - **Event Listeners:**
   - `InquiryNotificationListener` - Sends notifications (async)
@@ -633,6 +685,7 @@ View report at: `target/site/jacoco/index.html`
 - **Benefits:** Decoupled architecture, easy to extend with more listeners
 
 **How it works:**
+
 1. User submits inquiry → `InquiryService.createInquiry()` is called
 2. Inquiry saved to database
 3. `InquiryCreatedEvent` is published
@@ -640,7 +693,8 @@ View report at: `target/site/jacoco/index.html`
    - Notification listener sends agent notification
    - Statistics listener updates inquiry counts
 
-### AOP (Aspect-Oriented Programming) Implementation (2 bonus points)
+### AOP (Aspect-Oriented Programming) Implementation
+
 - **Aspect Class:** `LoggingAspect` - Centralized logging aspect
 - **Technology:** Spring AOP with AspectJ
 - **Purpose:** Separates cross-cutting concerns (logging) from business logic
@@ -652,6 +706,7 @@ View report at: `target/site/jacoco/index.html`
   - Performance monitoring
 
 **How it works:**
+
 1. `@Aspect` annotation marks the class as an aspect
 2. `@Pointcut` defines which methods to intercept (services and controllers)
 3. `@Around` advice wraps method execution
@@ -661,6 +716,7 @@ View report at: `target/site/jacoco/index.html`
    - Exceptions: `✗ Exception in method: ClassName.methodName() - Error: ...`
 
 **Benefits:**
+
 - Centralized logging logic (no need for `log.debug()` in every method)
 - Consistent logging format across the application
 - Automatic performance monitoring
@@ -668,12 +724,68 @@ View report at: `target/site/jacoco/index.html`
 - Easy to extend with more aspects (security, validation, etc.)
 
 **Files:**
+
 - `src/main/java/app/aspect/LoggingAspect.java` - Main aspect implementation
 - `pom.xml` - Contains `spring-boot-starter-aop` dependency
 
-#
+### Apache Kafka Integration 
 
+- **Technology:** Apache Kafka with Spring Kafka
+- **Purpose:** Distributed event streaming for microservices communication
+- **Topic:** `inquiry-created` - Publishes inquiry creation events
+- **Features:**
+  - Event producer: Publishes inquiry events to Kafka topics
+  - Event consumer: Consumes and processes events from Kafka
+  - Distributed processing: Multiple services can consume the same events
+  - Event persistence: Events are stored in Kafka for replay
+  - Decoupled architecture: Services communicate via events
 
+**How it works:**
 
+1. User creates inquiry → `InquiryService.createInquiry()` is called
+2. Inquiry saved to database
+3. Spring Event is published (in-process)
+4. **Kafka event is published** to `inquiry-created` topic (distributed)
+5. Kafka consumer receives and processes the event
+6. Multiple services can consume the same event independently
 
+**Benefits:**
 
+- **Distributed Events:** Events can be consumed by multiple microservices
+- **Event Replay:** Events are persisted, can be replayed for debugging
+- **Scalability:** Handle high event volumes with Kafka's distributed architecture
+- **Reliability:** Events are guaranteed to be delivered
+- **Decoupling:** Services don't need to know about each other
+
+**Configuration:**
+
+- **Bootstrap Server:** `localhost:9092` (local) or `kafka:9093` (Docker)
+- **Consumer Group:** `inquiry-consumer-group`
+- **Auto-create Topics:** Enabled (topics created automatically)
+
+**Docker Setup:**
+
+- Kafka and Zookeeper are included in `docker-compose.yml`
+- Kafka runs on port 9092 (host) → 9093 (internal)
+- Zookeeper runs on port 2181
+
+**How to test:**
+
+1. Start Kafka: `docker-compose up -d zookeeper kafka`
+2. Start application: `.\mvnw.cmd spring-boot:run`
+3. Create an inquiry through the UI
+4. Check logs for:
+   - `📨 Published inquiry event to Kafka topic 'inquiry-created'`
+   - `🔔 KAFKA EVENT RECEIVED: New inquiry created via Kafka`
+   - `✅ Kafka event processed successfully`
+
+**Files:**
+
+- `src/main/java/app/config/KafkaConfig.java` - Kafka producer/consumer configuration
+- `src/main/java/app/dto/InquiryCreatedKafkaEvent.java` - Kafka event DTO
+- `src/main/java/app/listener/InquiryKafkaListener.java` - Kafka consumer listener
+- `src/main/java/app/service/InquiryService.java` - Publishes events to Kafka
+- `docker-compose.yml` - Includes Kafka and Zookeeper services
+- `pom.xml` - Contains `spring-kafka` dependency
+
+**Note:** If Kafka is not running, the application will show connection warnings but will continue to work. Spring Events will still function (in-process events), but Kafka events won't be published.

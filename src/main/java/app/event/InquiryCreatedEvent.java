@@ -26,3 +26,4 @@ public class InquiryCreatedEvent extends ApplicationEvent {
 }
 
 
+

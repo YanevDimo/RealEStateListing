@@ -16,11 +16,11 @@ public class SchedulingConfig {
 
     private final AgentService agentService;
 
-    /**
-     * Scheduled job with cron expression.
-     * Runs daily at 3:00 AM to sync agent listing counts from property-service.
-     * This ensures agent.totalListings stays in sync with actual property count.
-     */
+    
+     //Scheduled job with cron expression.
+     // Runs daily at 3:00 AM to sync agent listing counts from property-service.
+     // This ensures agent.totalListings stays in sync with actual property count.
+     
     @Scheduled(cron = "0 0 3 * * ?")
     public void syncAgentListingsFromProperties() {
         log.info("Starting scheduled job: Syncing agent listings from property-service");
@@ -32,10 +32,10 @@ public class SchedulingConfig {
         }
     }
 
-    /**
-     * Scheduled job with fixed delay trigger.
-     * Runs 15 minutes after the previous execution completes.
-     */
+    
+     // Scheduled job with fixed delay trigger.
+     // Runs 15 minutes after the previous execution completes.
+     
     @Scheduled(fixedDelay = 900000, initialDelay = 60000)
     public void updateAgentRatings() {
         log.info("Starting scheduled job: Updating agent ratings");

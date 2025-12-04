@@ -15,10 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Feign Client for calling Property Service from main application.
- * This allows the main app to fetch property data from the property-service microservice.
- */
+ // Feign Client for calling Property Service from main application.
+ // This allows the main app to fetch property data from the property-service microservice.
+
 @FeignClient(name = "property-service", url = "${property.service.url:http://localhost:8083}")
 public interface PropertyServiceClient {
 

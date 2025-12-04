@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 
 import java.util.*;
@@ -41,6 +42,9 @@ class InquiryServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     @InjectMocks
     private InquiryService inquiryService;
